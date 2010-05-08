@@ -1,0 +1,20 @@
+{
+    "uid": "http://registry.pinf.org/cadorn.org/github/insight/programs/lib-php-standalone/",
+    "name": "lib-php-standalone",
+    "repositories": [
+        {
+            "type": "git",
+            "url": "git://github.com/cadorn/insight.git",
+            "path": "programs/lib-php-standalone"
+        }
+    ],
+    "implements": {
+        "http://registry.pinf.org/cadorn.org/github/pinf/@meta/program/package/0.1.0": {
+            "builders": {
+                "lib-php-standalone": {
+                    "module": "builder"
+                }
+            }
+        }
+    }
+}

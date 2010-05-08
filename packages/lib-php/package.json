@@ -1,0 +1,11 @@
+{
+    "uid": "http://registry.pinf.org/cadorn.org/github/insight/packages/lib-php/",
+    "name": "lib-php",
+    "repositories": [
+        {
+            "type": "git",
+            "url": "git://github.com/cadorn/insight.git",
+            "path": "packages/lib-php"
+        }
+    ]
+}
