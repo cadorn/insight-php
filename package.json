@@ -1,6 +1,9 @@
 {
     "uid": "http://registry.pinf.org/cadorn.org/github/insight/",
     "name": "insight",
+    "description": "In the spirit of the original FirePHP project, Insight is a development, debugging and monitoring framework designed to reflect the internals of a program to external tools.",
+    "license": "MIT",
+    "author": "Christoph Dorn (http://www.christophdorn.com)",
     "repositories": [
         {
             "type": "git",

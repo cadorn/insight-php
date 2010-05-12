@@ -7,5 +7,12 @@
             "url": "git://github.com/cadorn/insight.git",
             "path": "packages/lib-php"
         }
-    ]
+    ],
+    "dependencies": {
+        "wildfire": {
+            "catalog": "http://registry.pinf.org/cadorn.org/github/wildfire/packages/catalog.json",
+            "name": "lib-php",
+            "revision": "master"
+        }
+    }
 }

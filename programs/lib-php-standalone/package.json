@@ -1,6 +1,17 @@
 {
     "uid": "http://registry.pinf.org/cadorn.org/github/insight/programs/lib-php-standalone/",
     "name": "lib-php-standalone",
+    "author": "Christoph Dorn (http://www.christophdorn.com/)",
+    "license": "MIT",
+    "label": "PHP Insight Library",
+    "description": "PHP library for sending data to Insight Renderers via Wildfire.",
+    "dependencies": {
+        "lib-php": {
+            "catalog": "http://registry.pinf.org/cadorn.org/github/insight/packages/catalog.json",
+            "name": "lib-php",
+            "revision": "master"
+        }
+    },
     "repositories": [
         {
             "type": "git",
@@ -11,8 +22,15 @@
     "implements": {
         "http://registry.pinf.org/cadorn.org/github/pinf/@meta/program/package/0.1.0": {
             "builders": {
-                "lib-php-standalone": {
-                    "module": "builder"
+                "standalone": {
+                    "catalog": "http://registry.pinf.org/cadorn.org/github/modular-php/packages/catalog.json",
+                    "name": "core",
+                    "revision": "master",
+                    "module": "builders/standalone",
+                    "options": {
+                        "name": "insight-lib-php",
+                        "pharName": "insight"
+                    }
                 }
             }
         }
