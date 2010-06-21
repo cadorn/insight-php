@@ -8,51 +8,98 @@ class Insight_Helper
 
     private $config = null;
     private $server = null;
+    private $channel = null;
     private $dispatcher = null;
     private $announceReceiver = null;
-    
+        
     private $enabled = false;
     
-    public static function init($configPath) {
+    private $plugins = array();
+    
+    
+    public static function isInitialized() {
+        return !!(self::$instance);
+    }
+
+    public static function init($configPath, $additionalConfig) {
         if(self::$instance) {
             throw new Exception("Insight_Helper already initialized!");
         }
 
         $config = new Insight_Config();
-        $config->loadFromFile($configPath);
+        $config->loadFromFile($configPath, $additionalConfig);
 
         self::$instance = new self();
         self::$instance->setConfig($config);
 
         if(self::$instance->isClientAuthorized()) {
-
-            // initialize server            
-            require_once('Insight/Server.php');
-            self::$instance->server = new Insight_Server();
-            self::$instance->server->setConfig($config);
-            self::$instance->server->listen();
-            
-            
+                        
             // enable output buffering if not enabled
-            
-            
+            if(!($ob = ini_get('output_buffering')) || $ob==4096) {
+                // @see http://ca.php.net/manual/en/function.ob-get-level.php
+                if(ob_get_level()==1) { // ob_start() has not been called prior
+                    ob_start();
+                }
+            }
 
             // enable insight
             self::$instance->enabled = true;
 
             // flush on shutdown
-            register_shutdown_function('Insight_Helper__shutdown');        
+            register_shutdown_function('Insight_Helper__shutdown');
+
+            // set transport
+            require_once('Insight/Transport.php');
+            $transport = new Insight_Transport();
+            $transport->setConfig($config);
+            self::$instance->getChannel()->setTransport($transport);
+
+            // initialize server
+            require_once('Insight/Server.php');
+            self::$instance->server = new Insight_Server();
+            self::$instance->server->setConfig($config);
+
+            // NOTE: This may stop script execution if a transport data request is detected
+            $transport->setServer(self::$instance->server);
+            $transport->listen();
+
+            // NOTE: This may stop script execution if a server request is detected
+            self::$instance->server->listen();
+
+            // send package info
+            // TODO: Figure out a way to not send this all the time
+            //       Could be done via static data structures with checksums where the client announces which
+            //       data structures it has by sending the checksum in the request headers
+            if($packageInfo = $config->getPackageInfo()) {
+                self::to('package')->setInfo($packageInfo);
+            }
+            self::to('controller')->setServerUrl(self::$instance->server->getUrl());
+
+            // Look for x-insight trigger
+            $insight = false;
+            if(isset($_GET['x-insight'])) {
+                $insight = $_GET['x-insight'];
+            }
+            if(isset($_POST['x-insight'])) {
+                $insight = $_POST['x-insight'];
+            }
+            if($insight=='inspect' || Insight_Server::getRequestHeader('x-insight')=='inspect') {
+                Insight_Helper::to('controller')->triggerInspect();
+            }
         }
         return self::$instance;
+    }
+    
+    private function getChannel() {
+        if(!$this->channel) {
+            require_once('Wildfire/Channel/HttpHeader.php');
+            $this->channel = new Wildfire_Channel_HttpHeader();
+        }
+        return $this->channel;
     }
 
     private function newInstance() {
         return new self();
-    }
-
-    private function __construct() {
-
-//        $this->dispatcher->getEncoder()->setOption('treatArrayMapAsDictionary', true);
     }
 
     public static function getInstance() {
@@ -62,13 +109,17 @@ class Insight_Helper
         }
         return self::$instance;
     }
-
+    
     private function setConfig($config) {
         $this->config = $config;
     }
 
     public function getConfig() {
         return $this->config;
+    }
+
+    public function getEnabled() {
+        return $this->enabled;
     }
 
     public function getDispatcher() {
@@ -78,20 +129,25 @@ class Insight_Helper
         if(!$this->dispatcher) {
             require_once('Insight/Dispatcher.php');
             $this->dispatcher = new Insight_Dispatcher();
+            $this->dispatcher->setSenderID($this->config->getPackageId());
+            $this->dispatcher->setChannel($this->getChannel());
         }
         return $this->dispatcher;
     }
-    
+
     private function getAnnounceReceiver() {
         if(!$this->announceReceiver) {
             require_once('Insight/Receiver/Announce.php');
             $this->announceReceiver = new Insight_Receiver_Announce();
+            $this->announceReceiver->setChannel($this->getChannel());
             // parse received headers
             // NOTE: This needs to be moved if we want to support multiple receivers
-            $this->announceReceiver->getChannel()->parseReceived(getallheaders());
+            $this->getChannel()->parseReceived(getallheaders());
         }
         return $this->announceReceiver;
     }
+    
+    
 /*
     private function newMessage() {
         require_once('Insight/Message.php');
@@ -109,7 +165,7 @@ class Insight_Helper
         }
 
         $info = $instance->config->getTargetInfo($name);
-        
+
         if(!in_array($info['implements'], $instance->getAnnounceReceiver()->getReceivers())) {
             // if target was announced we allow it
             return new Insight_Helper__NullMessage();
@@ -120,22 +176,44 @@ class Insight_Helper
         $message->setHelper($instance);
 
         $message = $message->to($name);
-        $message = $message->meta(array(
-            'renderer' =>'php:variable'
-        ));
- 
-        require_once(dirname(dirname(__FILE__)) . DIRECTORY_SEPARATOR . $info['api'] . ".php");
+
+        require_once($info['api'] . ".php");
         $class = str_replace("/", "_", $info['api']);
 
-        $message = $message->api(new $class());
+        $api = new $class();
+        $message = $message->api($api);
+        if(method_exists($api, 'getDefaultMeta')) {
+            $message = $message->meta($api->getDefaultMeta());
+        }
 
         return $message;
     }
+
+    public static function plugin($name) {
+
+        $instance = self::getInstance();
+
+        if(!$instance->enabled) {
+            return new Insight_Helper__NullMessage();
+        }
+        
+        if(!isset($instance->plugins[$name])) {
+
+            $info = $instance->config->getPluginInfo($name);
     
+            require_once($info['api'] . ".php");
+            $class = str_replace("/", "_", $info['api']);
+    
+            $instance->plugins[$name] = new $class();
+        }
+
+        return $instance->plugins[$name];
+    }
+
     protected function isClientAuthorized() {
         // verify IP
         $authorized = false;
-        $ips = $this->config->getClientIPs();
+        $ips = $this->config->getIPs();
         if(count($ips)==1 && $ips[0]=='*') {
             $authorized = true;
         } else {
@@ -149,23 +227,36 @@ class Insight_Helper
         if(!$authorized) return false;
 
         $clientInfo = self::$instance->getClientInfo();
-        if(!$clientInfo) return false;
+        if(!$clientInfo || $clientInfo['client']!='insight') {
+            // announce installation
+            // NOTE: Only an IP match is required for this. If client is announcing itself ($clientInfo) we do NOT send this header!
+            // TODO: Use wildfire for this?
+            header('x-insight-installation-id: ' . implode('.', array_reverse(explode('.', $_SERVER['SERVER_NAME']))));
+            return false;
+        }
 
         // verify client key
         $authorized = false;
-        
+
         if($clientInfo['client']=='insight') {
-            
-            foreach( $this->config->getClientAuthkeys() as $authkey ) {
-                if(in_array($authkey, $clientInfo['authkeys'])) {
-                    $authorized = true;
-                    break;
+
+            $authkeys = $this->config->getAuthkeys();
+
+            if(count($authkeys)==1 && $authkeys[0]=='*') {
+                $authorized = true;
+            } else {
+                foreach( $authkeys as $authkey ) {
+                    if(in_array($authkey, $clientInfo['authkeys'])) {
+                        $authorized = true;
+                        break;
+                    }
                 }
             }
-            
-        } else
-        if($clientInfo['client']=='firephp') {
-            $authorized = true;
+        }
+
+        if(!$authorized) {
+            // IP matched and client announced itself but authkey does not match
+            header('x-insight-status: AUTHKEY_NOT_FOUND');
         }
         return $authorized;
     }
@@ -198,7 +289,7 @@ class Insight_Helper
         return $_SERVER['HTTP_USER_AGENT'];
     }
 
-    protected function getRequestHeader($Name) {
+    public static function getRequestHeader($Name) {
         $headers = getallheaders();
         if(isset($headers[$Name])) {
             return $headers[$Name];
@@ -217,19 +308,29 @@ class Insight_Helper__NullMessage {
     }
 }
 
-
-function Insight_Helper__shutdown()
-{
+function Insight_Helper__shutdown() {
     $insight = Insight_Helper::getInstance();
+    
+    // only send headers if this was not a transport request
+    if(Insight_Server::getRequestHeader('x-insight')=="transport") {
+        return;
+    }
+
     $insight->getDispatcher()->getChannel()->flush();
 }
 
 
 // auto-initialize based on environment if applicable
-function main() {
-    if(isset($_SERVER['INSIGHT_CONFIG_PATH'])) {
-        Insight_Helper::init($_SERVER['INSIGHT_CONFIG_PATH']);
+function Insight_Helper__main() {
+    $additionalConfig = isset($GLOBALS['INSIGHT_ADDITIONAL_CONFIG'])?$GLOBALS['INSIGHT_ADDITIONAL_CONFIG']:false;
+    if(defined('INSIGHT_CONFIG_PATH')) {
+        Insight_Helper::init(constant('INSIGHT_CONFIG_PATH'), $additionalConfig);
+    } else
+    if(getenv('INSIGHT_CONFIG_PATH')) {
+        Insight_Helper::init(getenv('INSIGHT_CONFIG_PATH'), $additionalConfig);
     }
 }
 
-main();
+if(isset($GLOBALS['INSIGHT_AUTOLOAD'])?$GLOBALS['INSIGHT_AUTOLOAD']:true) {
+    Insight_Helper__main();
+}

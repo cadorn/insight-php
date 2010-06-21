@@ -1,28 +1,30 @@
 <?php
 
-require_once 'Zend/Reflection/Class.php';
+require_once('Insight/Util.php');
+require_once('Zend/Reflection/Class.php');
 
 class Insight_Encoder_Default {
 
     const UNDEFINED = '_U_N_D_E_F_I_N_E_D_';
-    
-    protected $options = array('maxObjectDepth' => 10,
-                               'maxArrayDepth' => 20,
+
+    protected $options = array('maxDepth' => 5,
+                               'maxObjectDepth' => 3,
+                               'maxArrayDepth' => 3,
                                'includeLanguageMeta' => true,
                                'treatArrayMapAsDictionary' => false);
 
     /**
-     * @Insight Filter = On
+     * @insight filter = on
      */
     protected $_origin = self::UNDEFINED;
     
     /**
-     * @Insight Filter = On
+     * @insight filter = on
      */
     protected $_meta = null;
 
     /**
-     * @Insight Filter = On
+     * @insight filter = on
      */
     protected $_instances = array();
     
@@ -46,6 +48,20 @@ class Insight_Encoder_Default {
     {
         $this->_meta = $meta;
     }
+    
+    public function getOption($name) {
+        // check for option in meta first, then fall back to default options
+        if(isset($this->_meta['encoder.' . $name])) {
+            return $this->_meta['encoder.' . $name];
+        } else
+        if(isset($this->options[$name])) {
+            return $this->options[$name];
+        } else
+        if($name=='depthExtend') {
+            return 0;
+        }
+        return null;
+    }
 
     public function encode($data=self::UNDEFINED, $meta=self::UNDEFINED)
     {
@@ -56,9 +72,7 @@ class Insight_Encoder_Default {
         if($meta!==self::UNDEFINED) {
             $this->setMeta($meta);
         }
-        
-        // TODO: Use $meta['fc.encoder.options'] to control encoding
-        
+
         $graph = array();
         
         if($this->_origin!==self::UNDEFINED) {
@@ -71,12 +85,19 @@ class Insight_Encoder_Default {
             }
         }
 
-        if($this->options['includeLanguageMeta']) {
+        if($this->getOption('includeLanguageMeta')) {
             if(!$this->_meta) {
                 $this->_meta = array();
             }
-            if(!isset($this->_meta['fc.lang.id'])) {
-                $this->_meta['fc.lang.id'] = 'registry.pinf.org/cadorn.org/github/fireconsole-template-packs/packages/lang-php/master';
+            if(!isset($this->_meta['lang.id'])) {
+                $this->_meta['lang.id'] = 'registry.pinf.org/cadorn.org/github/renderers/packages/php/master';
+            }
+        }
+
+        // remove encoder options
+        foreach( $this->_meta as $name => $value ) {
+            if($name=="encoder" || substr($name, 0, 8)=="encoder.") {
+                unset($this->_meta[$name]);
             }
         }
 
@@ -84,13 +105,13 @@ class Insight_Encoder_Default {
     }
 
 
-    protected function _encodeVariable($Variable, $ObjectDepth = 1, $ArrayDepth = 1)
+    protected function _encodeVariable($Variable, $ObjectDepth = 1, $ArrayDepth = 1, $MaxDepth = 1)
     {
 /*        
         if($Variable===self::UNDEFINED) {
             $var = array('type'=>'constant', 'constant'=>'undefined');
             if($this->options['includeLanguageMeta']) {
-                $var['fc.lang.type'] = 'undefined';
+                $var['lang.type'] = 'undefined';
             }
             return $var;
         } else
@@ -98,56 +119,62 @@ class Insight_Encoder_Default {
 
         if(is_null($Variable)) {
             $var = array('type'=>'constant', 'constant'=>'null');
-            if($this->options['includeLanguageMeta']) {
-                $var['fc.lang.type'] = 'null';
+            if($this->getOption('includeLanguageMeta')) {
+                $var['lang.type'] = 'null';
             }
-            return $var;
         } else
         if(is_bool($Variable)) {
             $var = array('type'=>'constant', 'constant'=>($Variable)?'true':'false');
-            if($this->options['includeLanguageMeta']) {
-                $var['fc.lang.type'] = 'boolean';
+            if($this->getOption('includeLanguageMeta')) {
+                $var['lang.type'] = 'boolean';
             }
-            return $var;
         } else
         if(is_int($Variable)) {
             $var = array('type'=>'text', 'text'=>(string)$Variable);
-            if($this->options['includeLanguageMeta']) {
-                $var['fc.lang.type'] = 'integer';
+            if($this->getOption('includeLanguageMeta')) {
+                $var['lang.type'] = 'integer';
             }
-            return $var;
         } else
         if(is_float($Variable)) {
             $var = array('type'=>'text', 'text'=>(string)$Variable);
-            if($this->options['includeLanguageMeta']) {
-                $var['fc.lang.type'] = 'float';
+            if($this->getOption('includeLanguageMeta')) {
+                $var['lang.type'] = 'float';
             }
-            return $var;
         } else
         if(is_object($Variable)) {
-            
-            return array('type'=>'reference', 'reference'=> $this->_encodeInstance($Variable, $ObjectDepth, $ArrayDepth));
-            
+            $sub = $this->_encodeInstance($Variable, $ObjectDepth, $ArrayDepth, $MaxDepth);
+            $var = array('type'=>'reference', 'reference'=> $sub['value']);
+            if(isset($sub['meta'])) {
+                $var = Insight_Util::array_merge($var, $sub['meta']);
+            }
         } else
         if(is_array($Variable)) {
-            
+            $sub = null;
             // Check if we have an indexed array (list) or an associative array (map)
-            if(self::is_list($Variable)) {
-                return array('type'=>'array', 'array'=> $this->_encodeArray($Variable, $ObjectDepth, $ArrayDepth));
+            if(Insight_Util::is_list($Variable)) {
+                $sub = $this->_encodeArray($Variable, $ObjectDepth, $ArrayDepth, $MaxDepth);
+                $var = array('type'=>'array', 'array'=> $sub['value']);
             } else
-            if($this->options['treatArrayMapAsDictionary']) {
-                return array('type'=>'dictionary', 'dictionary'=> $this->_encodeAssociativeArray($Variable, $ObjectDepth, $ArrayDepth));
+            if($this->getOption('treatArrayMapAsDictionary')) {
+                $sub = $this->_encodeAssociativeArray($Variable, $ObjectDepth, $ArrayDepth, $MaxDepth);
+                $var = array('type'=>'dictionary', 'dictionary'=> isset($sub['value'])?$sub['value']:false);
             } else {
-                return array('type'=>'map', 'map'=> $this->_encodeAssociativeArray($Variable, $ObjectDepth, $ArrayDepth));
+                $sub = $this->_encodeAssociativeArray($Variable, $ObjectDepth, $ArrayDepth, $MaxDepth);
+                $var = array('type'=>'map', 'map'=> isset($sub['value'])?$sub['value']:false);
+            }
+            if(isset($sub['meta'])) {
+                $var = Insight_Util::array_merge($var, $sub['meta']);
+            }
+            if($this->getOption('includeLanguageMeta')) {
+                $var['lang.type'] = 'array';
             }
         } else
         if(is_resource($Variable)) {
             // TODO: Try and get more info about resource
             $var = array('type'=>'text', 'text'=>(string)$Variable);
-            if($this->options['includeLanguageMeta']) {
-                $var['fc.lang.type'] = 'resource';
+            if($this->getOption('includeLanguageMeta')) {
+                $var['lang.type'] = 'resource';
             }
-            return $var;
         } else
         if(is_string($Variable)) {
             $var = array('type'=>'text');
@@ -157,18 +184,27 @@ class Insight_Encoder_Default {
             } else {
                 $var['text'] = utf8_encode($Variable);
             }
-            if($this->options['includeLanguageMeta']) {
-                $var['fc.lang.type'] = 'string';
+            if($this->getOption('includeLanguageMeta')) {
+                $var['lang.type'] = 'string';
             }
-            return $var;
-            
         } else {
             $var = array('type'=>'text', 'text'=>(string)$Variable);
-            if($this->options['includeLanguageMeta']) {
-                $var['fc.lang.type'] = 'unknown';
+            if($this->getOption('includeLanguageMeta')) {
+                $var['lang.type'] = 'unknown';
             }
-            return $var;
         }        
+        return $var;
+    }
+    
+    protected function _isObjectMemberFiltered($ClassName, $MemberName) {
+        $filter = $this->getOption('filter');
+        if(!isset($filter['classes']) || !is_array($filter['classes'])) {
+            return false;
+        }
+        if(!isset($filter['classes'][$ClassName]) || !is_array($filter['classes'][$ClassName])) {
+            return false;
+        }
+        return in_array($MemberName, $filter['classes'][$ClassName]);
     }
     
     protected function _getInstanceID($Object)
@@ -181,24 +217,55 @@ class Insight_Encoder_Default {
         return null;
     }
     
-    protected function _encodeInstance($Object, $ObjectDepth = 1, $ArrayDepth = 1)
+    protected function _encodeInstance($Object, $ObjectDepth = 1, $ArrayDepth = 1, $MaxDepth = 1)
     {
+        if(($ret=$this->_checkDepth('Object', $ObjectDepth, $MaxDepth))!==false) {
+            return $ret;
+        }
+
         $id = $this->_getInstanceID($Object);
         if($id!==null) {
-            return $id;
+            return array('value'=>$id);
         }
-        
+
         $id = sizeof($this->_instances);
         $this->_instances[$id] = array($Object);
-        $this->_instances[$id][1] = $this->_encodeObject($Object, $ObjectDepth, $ArrayDepth);
+        $this->_instances[$id][1] = $this->_encodeObject($Object, $ObjectDepth, $ArrayDepth, $MaxDepth);
         
-        return $id;
+        return array('value'=>$id);
     }    
     
-    protected function _encodeAssociativeArray($Variable, $ObjectDepth = 1, $ArrayDepth = 1)
+    protected function _checkDepth($Type, $TypeDepth, $MaxDepth) {
+
+        $depthExtend = $this->getOption('depthExtend');
+
+        $MaxDepth -= $depthExtend;
+        $TypeDepth -= $depthExtend;
+
+        if ($MaxDepth > $this->getOption('maxDepth')) {
+            return array(
+                'value' => null,
+                'meta' => array(
+                    'encoder.trimmed' => true,
+                    'encoder.notice' => 'Max Depth ('.$this->getOption('maxDepth').')'
+                )
+            );
+        }
+        if ($TypeDepth > $this->getOption('max' . $Type . 'Depth')) {
+            return array(
+                'meta' => array(
+                    'encoder.trimmed' => true,
+                    'encoder.notice' => 'Max ' . $Type . ' Depth ('.$this->getOption('max' . $Type . 'Depth').')'
+                )
+            );
+        }
+        return false;
+    }
+    
+    protected function _encodeAssociativeArray($Variable, $ObjectDepth = 1, $ArrayDepth = 1, $MaxDepth = 1)
     {
-        if ($ArrayDepth > $this->options['maxArrayDepth']) {
-          return '** Max Array Depth ('.$this->options['maxArrayDepth'].') **';
+        if(($ret=$this->_checkDepth('Array', $ArrayDepth, $MaxDepth))!==false) {
+            return $ret;
         }
 
         foreach ($Variable as $key => $val) {
@@ -213,55 +280,57 @@ class Insight_Encoder_Default {
             $val['GLOBALS'] = '** Recursion (GLOBALS) **';
           }
 
-          if($this->options['treatArrayMapAsDictionary']) {
+          if($this->getOption('treatArrayMapAsDictionary')) {
               $return[$key] = $this->_encodeVariable($val, 1, $ArrayDepth + 1);
           } else {
-              $return[] = array($this->_encodeVariable($key), $this->_encodeVariable($val, 1, $ArrayDepth + 1));
+              $return[] = array($this->_encodeVariable($key), $this->_encodeVariable($val, 1, $ArrayDepth + 1, $MaxDepth + 1));
           }
         }
-        return $return;    
+        return array('value'=>$return);
     }
-    
-    protected function _encodeArray($Variable, $ObjectDepth = 1, $ArrayDepth = 1)
+
+    protected function _encodeArray($Variable, $ObjectDepth = 1, $ArrayDepth = 1, $MaxDepth = 1)
     {
-        if ($ArrayDepth > $this->options['maxArrayDepth']) {
-          return array('notice'=>'Max Array Depth ('.$this->options['maxArrayDepth'].')');
-        }
-        $items = array();
-        foreach ($Variable as $val) {
-          $items[] = $this->_encodeVariable($val, 1, $ArrayDepth + 1);
-        }
-        return $items;     
-    }
-    
-    
-    protected function _encodeObject($Object, $ObjectDepth = 1, $ArrayDepth = 1)
-    {
-        if ($ObjectDepth > $this->options['maxObjectDepth']) {
-          return array('notice'=>'Max Object Depth ('.$this->options['maxObjectDepth'].')');
+        if(($ret=$this->_checkDepth('Array', $ArrayDepth, $MaxDepth))!==false) {
+            return $ret;
         }
 
+        $items = array();
+        foreach ($Variable as $val) {
+          $items[] = $this->_encodeVariable($val, 1, $ArrayDepth + 1, $MaxDepth + 1);
+        }
+        return array('value'=>$items);
+    }
+    
+    
+    protected function _encodeObject($Object, $ObjectDepth = 1, $ArrayDepth = 1, $MaxDepth = 1)
+    {
         $return = array('type'=>'dictionary');
 
         $class = get_class($Object);
-        if($this->options['includeLanguageMeta']) {
-            $return['fc.lang.class'] = $class;
+        if($this->getOption('includeLanguageMeta')) {
+            if($Object instanceof Exception) {
+                $return['lang.type'] = 'exception';
+            } else {
+                $return['lang.type'] = 'object';
+            }
+            $return['lang.class'] = $class;
         }
-        
+
         $classAnnotations = $this->_getClassAnnotations($class);
 
         $properties = $this->_getClassProperties($class);
         $reflectionClass = new ReflectionClass($class);  
         
-        if($this->options['includeLanguageMeta']) {
-            $return['fc.lang.file'] = $reflectionClass->getFileName();
+        if($this->getOption('includeLanguageMeta')) {
+            $return['lang.file'] = $reflectionClass->getFileName();
         }
         
         $members = (array)$Object;
         foreach( $properties as $name => $property ) {
           
-          if($name=='__fc_tpl_id') {
-              $return['fc.tpl.id'] = $property->getValue($Object);
+          if($name=='__insight_tpl_id') {
+              $return['tpl.id'] = $property->getValue($Object);
               continue;
           }
           
@@ -285,62 +354,89 @@ class Insight_Encoder_Default {
           }
 
           if(isset($classAnnotations['$'.$name])
-             && isset($classAnnotations['$'.$name]['Filter'])
-             && $classAnnotations['$'.$name]['Filter']=='On') {
+             && isset($classAnnotations['$'.$name]['filter'])
+             && $classAnnotations['$'.$name]['filter']=='on') {
                    
               $info['notice'] = 'Trimmed by annotation filter';
           } else
-          if(isset($this->objectFilters[$class])
-             && is_array($this->objectFilters[$class])
-             && in_array($name,$this->objectFilters[$class])) {
+          if($this->_isObjectMemberFiltered($class, $name)) {
                    
               $info['notice'] = 'Trimmed by registered filters';
           }
 
+          if(method_exists($property, 'setAccessible')) {
+              $property->setAccessible(true);
+          }
+
           if(isset($info['notice'])) {
+
+              $info['trimmed'] = true;
 
               try {
                       
-                $info['value'] = $this->_trimVariable($property->getValue($Object));
+                  $info['value'] = $this->_trimVariable($property->getValue($Object));
                   
               } catch(ReflectionException $e) {
-                $info['value'] =  $this->_encodeVariable(self::UNDEFINED);
-                $info['notice'] .= ', Need PHP 5.3 to get value';
+                  $info['value'] =  $this->_trimVariable(self::UNDEFINED);
+                  $info['notice'] .= ', Need PHP 5.3 to get value';
               }
 
           } else {
+              
+            $value = self::UNDEFINED;
 
             if(array_key_exists($raw_name,$members)) {
 //            if(array_key_exists($raw_name,$members)
  //              && !$property->isStatic()) {
 
-                $info['value'] = $this->_encodeVariable($members[$raw_name], $ObjectDepth + 1, 1);
-            
+                $value = $members[$raw_name];
+
             } else {
-              if(method_exists($property,'setAccessible')) {
-                $property->setAccessible(true);
-              }
               try {
-                      
-                  $info['value'] = $this->_encodeVariable($property->getValue($Object), $ObjectDepth + 1, 1);
-                  
+                  $value = $property->getValue($Object);
               } catch(ReflectionException $e) {
-                  $info['value'] =  $this->_encodeVariable(self::UNDEFINED);
+                  $info['value'] =  $this->_trimVariable(self::UNDEFINED);
                   $info['notice'] = 'Need PHP 5.3 to get value';
               }
+            }
+
+            // NOTE: This is a bit of a hack but it works for now
+            if($Object instanceof Exception && $name=='trace' && $this->getOption('exception.traceOffset')!==null) {
+              $offset = $this->getOption('exception.traceOffset');
+              if($offset==-1) {
+                  array_unshift($value, array(
+                      'file' => $Object->getFile(),
+                      'line' =>  $Object->getLine(),
+                      'type' => 'throw',
+                      'class' => $class,
+                      'args' => array(
+                          $Object->getMessage()
+                      )
+                  ));
+              } else
+              if($offset>0) {
+                  array_splice($value, 0, $offset);
+              }
+            }
+            
+            if($value!==self::UNDEFINED) {
+                $info['value'] = $this->_encodeVariable($value, $ObjectDepth + 1, 1, $MaxDepth + 1);
             }
           }
           
           $return['dictionary'][$info['name']] = $info['value'];
           if(isset($info['notice'])) {
-              $return['dictionary'][$info['name']]['fc.encoder.notice'] = $info['notice'];
+              $return['dictionary'][$info['name']]['encoder.notice'] = $info['notice'];
           }
-          if($this->options['includeLanguageMeta']) {
+          if(isset($info['trimmed'])) {
+              $return['dictionary'][$info['name']]['encoder.trimmed'] = $info['trimmed'];
+          }
+          if($this->getOption('includeLanguageMeta')) {
               if(isset($info['visibility'])) {
-                  $return['dictionary'][$info['name']]['fc.lang.visibility'] = $info['visibility'];
+                  $return['dictionary'][$info['name']]['lang.visibility'] = $info['visibility'];
               }
               if(isset($info['static'])) {
-                  $return['dictionary'][$info['name']]['fc.lang.static'] = $info['static'];
+                  $return['dictionary'][$info['name']]['lang.static'] = $info['static'];
               }
           }
 //          $return['members'][] = $info;
@@ -362,30 +458,32 @@ class Insight_Encoder_Default {
             $info['name'] = $name;
 
             if(isset($classAnnotations['$'.$name])
-               && isset($classAnnotations['$'.$name]['Filter'])
-               && $classAnnotations['$'.$name]['Filter']=='On') {
+               && isset($classAnnotations['$'.$name]['filter'])
+               && $classAnnotations['$'.$name]['filter']=='on') {
                        
                 $info['notice'] = 'Trimmed by annotation filter';
             } else
-            if(isset($this->objectFilters[$class])
-               && is_array($this->objectFilters[$class])
-               && in_array($name,$this->objectFilters[$class])) {
+            if($this->_isObjectMemberFiltered($class, $name)) {
                        
                 $info['notice'] = 'Trimmed by registered filters';
             }
-            
+
             if(isset($info['notice'])) {
+                $info['trimmed'] = true;
                 $info['value'] = $this->_trimVariable($value);
             } else {
-                $info['value'] = $this->_encodeVariable($value, $ObjectDepth + 1, 1);
+                $info['value'] = $this->_encodeVariable($value, $ObjectDepth + 1, 1, $MaxDepth + 1);
             }
 
             $return['dictionary'][$info['name']] = $info['value'];
-            if($this->options['includeLanguageMeta']) {
-                $return['dictionary'][$info['name']]['fc.lang.undeclared'] = 1;
+            if($this->getOption('includeLanguageMeta')) {
+                $return['dictionary'][$info['name']]['lang.undeclared'] = 1;
             }
             if(isset($info['notice'])) {
-              $return['dictionary'][$info['name']]['fc.encoder.notice'] = $info['notice'];
+                $return['dictionary'][$info['name']]['encoder.notice'] = $info['notice'];
+            }
+            if(isset($info['trimmed'])) {
+                $return['dictionary'][$info['name']]['encoder.trimmed'] = $info['trimmed'];
             }
 
 //            $return['members'][] = $info;    
@@ -398,28 +496,32 @@ class Insight_Encoder_Default {
     protected function _trimVariable($var, $length=20)
     {
         if(is_null($var)) {
-            return 'NULL';
+            $text = 'NULL';
         } else
         if(is_bool($var)) {
-            return ($var)?'TRUE':'FALSE';
+            $text = ($var)?'TRUE':'FALSE';
         } else
         if(is_int($var) || is_float($var) || is_double($var)) {
-            return $this->_trimString((string)$var, $length);
+            $text = $this->_trimString((string)$var, $length);
         } else
         if(is_object($var)) {
-            return $this->_trimString(get_class($var), $length);
+            $text = $this->_trimString(get_class($var), $length);
         } else
         if(is_array($var)) {
-            return $this->_trimString(serialize($var), $length);
+            $text = $this->_trimString(serialize($var), $length);
         } else
         if(is_resource($var)) {
-            return $this->_trimString('' . $var);
+            $text = $this->_trimString('' . $var);
         } else
         if(is_string($var)) {
-            return '\'' . $this->_trimString($var, $length) . '\'';
+            $text = $this->_trimString($var, $length);
         } else {
-            return '\'' . $this->_trimString($var, $length) . '\'';
+            $text = $this->_trimString($var, $length);
         }
+        return array(
+            'type' => 'text',
+            'text' => $text
+        );
     }
     
     protected function _trimString($string, $length=20)
@@ -461,7 +563,7 @@ class Insight_Encoder_Default {
             $docblock = $property->getDocComment();
             if($docblock) {
                 
-                $tags = $docblock->getTags('Insight');
+                $tags = $docblock->getTags('insight');
                 if($tags) {
                     foreach($tags as $tag) {
                        
@@ -484,25 +586,6 @@ class Insight_Encoder_Default {
         }
         
         return array($m[1][0], $m[2][0]);
-    }
-    
-    
-    protected static function is_list($array)
-    {
-        $i = 0;
-        foreach( array_keys($array) as $k ) {
-            if( $k !== $i++ ) {
-                $i = -1;
-                break;
-            }
-        }
-        if($i==-1) {
-            // Array is a map
-            return false;
-        } else {
-            // Array is a list
-            return true;
-        }
     }
 
  

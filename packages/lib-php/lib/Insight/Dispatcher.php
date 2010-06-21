@@ -6,31 +6,35 @@ class Insight_Dispatcher implements Wildfire_Channel_FlushListener
 {
     const PROTOCOL_ID = 'http://registry.pinf.org/cadorn.org/wildfire/@meta/protocol/component/0.1.0';
     
-    private $senderID = 'http://registry.pinf.org/cadorn.org/insight/packages/lib-php/';
+//    private $senderID = 'http://registry.pinf.org/cadorn.org/insight/packages/lib-php/';
     private $receiverID = null;
     
     private $channel = null;
     private $messageFactory = null;
-    private $encoder = null;
+    private $encoders = array();
     
 //    protected $_registeredLanguagePacks = array();
 
-    
+
+    public function setSenderID($id) {
+        $this->senderID = $id;
+    }
+
     protected function getSenderID() {
         return $this->senderID;
     }
-    
+
     public function setReceiverID($id) {
         $this->receiverID = $id;
     }
-    
+
     protected function getReceiverID() {
         if(!$this->receiverID) {
             throw new Exception('receiverID not set');
         }
         return $this->receiverID;
     }
-    
+
     public function setChannel($channel)
     {
         if(is_string($channel)) {
@@ -38,6 +42,7 @@ class Insight_Dispatcher implements Wildfire_Channel_FlushListener
             $class = 'Wildfire_Channel_' . $channel;
             $channel = new $class();
         }
+        $channel->addFlushListener($this);
         return $this->channel = $channel;
     }
 
@@ -75,10 +80,12 @@ class Insight_Dispatcher implements Wildfire_Channel_FlushListener
     
     public function getChannel()
     {
+/*        
         if(!$this->channel) {
             require_once 'Wildfire/Channel/HttpHeader.php';
             $this->channel = new Wildfire_Channel_HttpHeader();
         }
+*/        
         $this->channel->addFlushListener($this);
 /*        
         $this->registerTemplatePack(array(
@@ -110,18 +117,19 @@ class Insight_Dispatcher implements Wildfire_Channel_FlushListener
         return $this->messageFactory->newMessage($meta);
     }
 
-    public function getEncoder()
+    public function getEncoder($name = 'Default')
     {
-        if(!$this->encoder) {
-            require_once 'Insight/Encoder/Default.php';
-            $this->encoder = new Insight_Encoder_Default();
+        if(!isset($this->encoder[$name])) {
+            require_once 'Insight/Encoder/' . $name . '.php';
+            $class = 'Insight_Encoder_' . $name;
+            $this->encoder[$name] = new $class();
         }
-        return $this->encoder;
+        return $this->encoder[$name];
     }
 
     public function send($data, $meta=array())
     {
-        list($data, $meta) = $this->getEncoder()->encode($data, $meta);
+        list($data, $meta) = $this->getEncoder((isset($meta['encoder']))?$meta['encoder']:'Default')->encode($data, $meta);
         return $this->sendRaw(
             $data,
             ($meta)?json_encode($meta):''

@@ -11,7 +11,13 @@ class Insight_Plugin_Request {
     public function setMessage($message) {
         $this->message = $message;
     }
-
+/*
+    public function getDefaultMeta() {
+        return array(
+            'renderer' =>'php:variable'
+        );
+    }
+*/
     public function console($name) {
         return $this->message->api(new Insight_Plugin_Console())->meta(array(
             'target' => 'console/' . $name

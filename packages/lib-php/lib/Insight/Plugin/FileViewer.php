@@ -3,9 +3,9 @@
 class Insight_Plugin_FileViewer
 {
     public function respond($server, $action, $args) {
-        
+
         if($action=='ListFiles') {
-            
+/*            
             $basePath = $server->getOption('applicationRootPath');
             
             // TODO: Simplify
@@ -58,16 +58,28 @@ class Insight_Plugin_FileViewer
                 'type' => 'json',
                 'data' => $data
             );
+*/            
         } else
         if($action=='GetFile') {
 
-            $basePath = $server->getOption('applicationRootPath');
+            $file = false;
+            if(isset($args['path'])) {
+                $file = $server->canServeFile($args['path']);
+            } else {
+//                $basePath = $server->getOption('applicationRootPath');
+//                $path = realpath($basePath . DIRECTORY_SEPARATOR . $args['id']);
+            }
 
-            $path = $basePath . DIRECTORY_SEPARATOR . $args['id'];
+            if(!$file) {
+                return array(
+                    'type' => 'error',
+                    'status' => '403'
+                );
+            }
 
             return array(
                 'type' => 'text/plain',
-                'data' => file_get_contents($path)
+                'data' => file_get_contents($file)
             );
         }
         return false;

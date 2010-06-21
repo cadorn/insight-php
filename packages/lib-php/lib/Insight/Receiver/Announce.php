@@ -1,23 +1,16 @@
 <?php
 
-require_once 'Wildfire/Channel/HttpHeader.php';
 require_once('Wildfire/Receiver.php');
 
 
 class Insight_Receiver_Announce extends Wildfire_Receiver
 {
     private $data = array();
-    
-    function __construct() {
-        $channel = new Wildfire_Channel_HttpHeader();
-        $channel->addReceiver($this);
-        $this->setChannel($channel);
-    }    
 
     public function getProtocol() {
         return 'http://registry.pinf.org/cadorn.org/wildfire/@meta/protocol/announce/0.1.0';
     }
-    
+
     public function onMessageReceived(Wildfire_Message $message)
     {
         $data = json_decode($message->getData(), true);

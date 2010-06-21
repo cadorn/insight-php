@@ -1,5 +1,8 @@
 <?php
 
+require_once('Insight/Util.php');
+
+
 class Insight_Message {
     
     protected $helper = null;
@@ -31,12 +34,21 @@ class Insight_Message {
         } else
         if($name=='meta') {
             $message = clone $this;
-            $message->meta = array_merge($message->meta, $arguments[0]);
+            foreach( $arguments[0] as $name => $value ) {
+                if($value===null) {
+                    unset($message->meta[$name]);
+                } else
+                if(isset($message->meta[$name])) {
+                    $message->meta[$name] = Insight_Util::array_merge($message->meta[$name], $value);
+                } else {
+                    $message->meta[$name] = $value;
+                }
+            }
             return $message;
         }
         throw new Exception("Unknown method: " + $name);
     }
-    
+
     public function send($data) {
         
         $dispatcher = $this->helper->getDispatcher();
@@ -46,10 +58,12 @@ class Insight_Message {
 
         $meta = $this->meta;
 
-        $parts = explode(":", $meta['renderer']);
-        $info = $this->helper->getConfig()->getRendererInfo($parts[0]);
-        $parts[0] = $info['uid'];
-        $meta['renderer'] = implode(":", $parts);
+        if(isset($meta['renderer'])) {
+            $parts = explode(":", $meta['renderer']);
+            $info = $this->helper->getConfig()->getRendererInfo($parts[0]);
+            $parts[0] = $info['uid'];
+            $meta['renderer'] = implode(":", $parts);
+        }
 
         $dispatcher->send($data, $meta);
     }
