@@ -27,6 +27,14 @@ class Insight_Encoder_JSON {
         $this->options[$name] = $value;
     }    
 
+    public function setOptions($options)
+    {
+//        if(count($diff = array_diff(array_keys($options), array_keys($this->options)))>0) {
+//            throw new Exception('Unknown options: ' . implode(',', $diff));
+//        }
+        $this->options = Insight_Util::array_merge($this->options, $options);
+    }
+
     public function setOrigin($variable)
     {
         $this->_origin = $variable;

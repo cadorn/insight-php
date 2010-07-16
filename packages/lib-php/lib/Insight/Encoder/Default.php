@@ -10,6 +10,8 @@ class Insight_Encoder_Default {
     protected $options = array('maxDepth' => 5,
                                'maxObjectDepth' => 3,
                                'maxArrayDepth' => 3,
+                               'maxArrayLength' => 25,
+                               'maxObjectLength' => 25,
                                'includeLanguageMeta' => true,
                                'treatArrayMapAsDictionary' => false);
 
@@ -27,11 +29,19 @@ class Insight_Encoder_Default {
      * @insight filter = on
      */
     protected $_instances = array();
-    
+
 
     public function setOption($name, $value)
     {
         $this->options[$name] = $value;
+    }    
+
+    public function setOptions($options)
+    {
+        if(count($diff = array_diff(array_keys($options), array_keys($this->options)))>0) {
+            throw new Exception('Unknown options: ' . implode(',', $diff));
+        }
+        $this->options = Insight_Util::array_merge($this->options, $options);
     }    
 
     public function setOrigin($variable)
@@ -48,7 +58,7 @@ class Insight_Encoder_Default {
     {
         $this->_meta = $meta;
     }
-    
+
     public function getOption($name) {
         // check for option in meta first, then fall back to default options
         if(isset($this->_meta['encoder.' . $name])) {
@@ -268,6 +278,8 @@ class Insight_Encoder_Default {
             return $ret;
         }
 
+        $index = 0;
+        $maxLength = $this->getOption('maxArrayLength');
         foreach ($Variable as $key => $val) {
           
           // Encoding the $GLOBALS PHP array causes an infinite loop
@@ -285,6 +297,25 @@ class Insight_Encoder_Default {
           } else {
               $return[] = array($this->_encodeVariable($key), $this->_encodeVariable($val, 1, $ArrayDepth + 1, $MaxDepth + 1));
           }
+
+          $index++;
+          if($index>=$maxLength) {
+              if($this->getOption('treatArrayMapAsDictionary')) {
+                  $return['...'] = array(
+                    'encoder.trimmed' => true,
+                    'encoder.notice' => 'Max Array Length ('.$this->getOption('maxArrayLength').')'
+                  );
+              } else {
+                  $return[] = array(array(
+                    'encoder.trimmed' => true,
+                    'encoder.notice' => 'Max Array Length ('.$this->getOption('maxArrayLength').')'
+                  ), array(
+                    'encoder.trimmed' => true,
+                    'encoder.notice' => 'Max Array Length ('.$this->getOption('maxArrayLength').')'
+                  ));
+              }
+              break;
+          }
         }
         return array('value'=>$return);
     }
@@ -296,8 +327,18 @@ class Insight_Encoder_Default {
         }
 
         $items = array();
+        $index = 0;
+        $maxLength = $this->getOption('maxArrayLength');
         foreach ($Variable as $val) {
           $items[] = $this->_encodeVariable($val, 1, $ArrayDepth + 1, $MaxDepth + 1);
+          $index++;
+          if($index>=$maxLength) {
+              $items[] = array(
+                'encoder.trimmed' => true,
+                'encoder.notice' => 'Max Array Length ('.$this->getOption('maxArrayLength').')'
+              );
+              break;
+          }
         }
         return array('value'=>$items);
     }
@@ -305,7 +346,7 @@ class Insight_Encoder_Default {
     
     protected function _encodeObject($Object, $ObjectDepth = 1, $ArrayDepth = 1, $MaxDepth = 1)
     {
-        $return = array('type'=>'dictionary');
+        $return = array('type'=>'dictionary', 'dictionary'=>array());
 
         $class = get_class($Object);
         if($this->getOption('includeLanguageMeta')) {
@@ -325,6 +366,9 @@ class Insight_Encoder_Default {
         if($this->getOption('includeLanguageMeta')) {
             $return['lang.file'] = $reflectionClass->getFileName();
         }
+
+        $maxLength = $this->getOption('maxObjectLength');
+        $maxLengthReached = false;
         
         $members = (array)$Object;
         foreach( $properties as $name => $property ) {
@@ -332,6 +376,11 @@ class Insight_Encoder_Default {
           if($name=='__insight_tpl_id') {
               $return['tpl.id'] = $property->getValue($Object);
               continue;
+          }
+          
+          if(count($return['dictionary'])>$maxLength) {
+              $maxLengthReached = true;
+              break;
           }
           
           $info = array();
@@ -442,52 +491,67 @@ class Insight_Encoder_Default {
 //          $return['members'][] = $info;
         }
         
-        // Include all members that are not defined in the class
-        // but exist in the object
-        foreach( $members as $name => $value ) {
-          
-          if ($name{0} == "\0") {
-            $parts = explode("\0", $name);
-            $name = $parts[2];
-          }
-          
-          if(!isset($properties[$name])) {
-            
-            $info = array();
-            $info['undeclared'] = 1;
-            $info['name'] = $name;
+        if(!$maxLengthReached) {
+            // Include all members that are not defined in the class
+            // but exist in the object
+            foreach( $members as $name => $value ) {
+              
+              if ($name{0} == "\0") {
+                $parts = explode("\0", $name);
+                $name = $parts[2];
+              }
 
-            if(isset($classAnnotations['$'.$name])
-               && isset($classAnnotations['$'.$name]['filter'])
-               && $classAnnotations['$'.$name]['filter']=='on') {
-                       
-                $info['notice'] = 'Trimmed by annotation filter';
-            } else
-            if($this->_isObjectMemberFiltered($class, $name)) {
-                       
-                $info['notice'] = 'Trimmed by registered filters';
+              if(count($return['dictionary'])>$maxLength) {
+                  $maxLengthReached = true;
+                  break;
+              }
+              
+              if(!isset($properties[$name])) {
+                
+                $info = array();
+                $info['undeclared'] = 1;
+                $info['name'] = $name;
+    
+                if(isset($classAnnotations['$'.$name])
+                   && isset($classAnnotations['$'.$name]['filter'])
+                   && $classAnnotations['$'.$name]['filter']=='on') {
+                           
+                    $info['notice'] = 'Trimmed by annotation filter';
+                } else
+                if($this->_isObjectMemberFiltered($class, $name)) {
+                           
+                    $info['notice'] = 'Trimmed by registered filters';
+                }
+    
+                if(isset($info['notice'])) {
+                    $info['trimmed'] = true;
+                    $info['value'] = $this->_trimVariable($value);
+                } else {
+                    $info['value'] = $this->_encodeVariable($value, $ObjectDepth + 1, 1, $MaxDepth + 1);
+                }
+    
+                $return['dictionary'][$info['name']] = $info['value'];
+                if($this->getOption('includeLanguageMeta')) {
+                    $return['dictionary'][$info['name']]['lang.undeclared'] = 1;
+                }
+                if(isset($info['notice'])) {
+                    $return['dictionary'][$info['name']]['encoder.notice'] = $info['notice'];
+                }
+                if(isset($info['trimmed'])) {
+                    $return['dictionary'][$info['name']]['encoder.trimmed'] = $info['trimmed'];
+                }
+    
+    //            $return['members'][] = $info;    
+              }
             }
-
-            if(isset($info['notice'])) {
-                $info['trimmed'] = true;
-                $info['value'] = $this->_trimVariable($value);
-            } else {
-                $info['value'] = $this->_encodeVariable($value, $ObjectDepth + 1, 1, $MaxDepth + 1);
-            }
-
-            $return['dictionary'][$info['name']] = $info['value'];
-            if($this->getOption('includeLanguageMeta')) {
-                $return['dictionary'][$info['name']]['lang.undeclared'] = 1;
-            }
-            if(isset($info['notice'])) {
-                $return['dictionary'][$info['name']]['encoder.notice'] = $info['notice'];
-            }
-            if(isset($info['trimmed'])) {
-                $return['dictionary'][$info['name']]['encoder.trimmed'] = $info['trimmed'];
-            }
-
-//            $return['members'][] = $info;    
-          }
+        }
+        
+        if($maxLengthReached) {
+            unset($return['dictionary'][array_pop(array_keys($return['dictionary']))]);
+            $return['dictionary']['...'] = array(
+              'encoder.trimmed' => true,
+              'encoder.notice' => 'Max Object Length ('.$this->getOption('maxObjectLength').')'
+            );
         }
 
         return $return;

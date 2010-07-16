@@ -9,6 +9,8 @@ class Insight_Plugin_Console {
     protected $temporaryTraceOffset = null;
     protected $traceOffset = 4;
     protected $message = null;
+    protected static $groupIndex = 0;
+
 
     public function setMessage($message) {
         $this->message = $message;
@@ -68,7 +70,10 @@ class Insight_Plugin_Console {
         ), $data))->send($data);
     }
 
-    public function group($name) {
+    public function group($name=null) {
+        if(!$name) {
+            $name = md5(uniqid() . microtime(true) . (self::$groupIndex++));
+        }
         return $this->message->api(new Insight_Plugin_Group())->meta(array(
             'group' => $name
         ));

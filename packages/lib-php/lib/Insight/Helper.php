@@ -5,6 +5,8 @@ require_once('Insight/Config.php');
 class Insight_Helper
 {
     private static $instance = null;
+    
+    private static $senderLibrary = null;
 
     private $config = null;
     private $server = null;
@@ -20,71 +22,82 @@ class Insight_Helper
     public static function isInitialized() {
         return !!(self::$instance);
     }
+    
+    public static function setSenderLibrary($stringPointer) {
+        self::$senderLibrary = $stringPointer;
+    }
 
     public static function init($configPath, $additionalConfig) {
         if(self::$instance) {
             throw new Exception("Insight_Helper already initialized!");
         }
+        
+        try {
 
-        $config = new Insight_Config();
-        $config->loadFromFile($configPath, $additionalConfig);
-
-        self::$instance = new self();
-        self::$instance->setConfig($config);
-
-        if(self::$instance->isClientAuthorized()) {
-                        
-            // enable output buffering if not enabled
-            if(!($ob = ini_get('output_buffering')) || $ob==4096) {
-                // @see http://ca.php.net/manual/en/function.ob-get-level.php
-                if(ob_get_level()==1) { // ob_start() has not been called prior
-                    ob_start();
+            $config = new Insight_Config();
+            $config->loadFromFile($configPath, $additionalConfig);
+    
+            self::$instance = new self();
+            self::$instance->setConfig($config);
+    
+            if(self::$instance->isClientAuthorized()) {
+                            
+                // enable output buffering if not enabled
+                if(!($ob = ini_get('output_buffering')) || $ob==4096) {
+                    // @see http://ca.php.net/manual/en/function.ob-get-level.php
+                    if(ob_get_level()==1) { // ob_start() has not been called prior
+                        ob_start();
+                    }
+                }
+    
+                // enable insight
+                self::$instance->enabled = true;
+    
+                // flush on shutdown
+                register_shutdown_function('Insight_Helper__shutdown');
+    
+                // set transport
+                require_once('Insight/Transport.php');
+                $transport = new Insight_Transport();
+                $transport->setConfig($config);
+                self::$instance->getChannel()->setTransport($transport);
+    
+                // initialize server
+                require_once('Insight/Server.php');
+                self::$instance->server = new Insight_Server();
+                self::$instance->server->setConfig($config);
+    
+                // NOTE: This may stop script execution if a transport data request is detected
+                $transport->setServer(self::$instance->server);
+                $transport->listen();
+    
+                // NOTE: This may stop script execution if a server request is detected
+                self::$instance->server->listen();
+    
+                // send package info
+                // TODO: Figure out a way to not send this all the time
+                //       Could be done via static data structures with checksums where the client announces which
+                //       data structures it has by sending the checksum in the request headers
+                if($packageInfo = $config->getPackageInfo()) {
+                    self::to('package')->setInfo($packageInfo);
+                }
+                self::to('controller')->setServerUrl(self::$instance->server->getUrl());
+    
+                // Look for x-insight trigger
+                $insight = false;
+                if(isset($_GET['x-insight'])) {
+                    $insight = $_GET['x-insight'];
+                }
+                if(isset($_POST['x-insight'])) {
+                    $insight = $_POST['x-insight'];
+                }
+                if($insight=='inspect' || Insight_Server::getRequestHeader('x-insight')=='inspect') {
+                    Insight_Helper::to('controller')->triggerInspect();
                 }
             }
-
-            // enable insight
-            self::$instance->enabled = true;
-
-            // flush on shutdown
-            register_shutdown_function('Insight_Helper__shutdown');
-
-            // set transport
-            require_once('Insight/Transport.php');
-            $transport = new Insight_Transport();
-            $transport->setConfig($config);
-            self::$instance->getChannel()->setTransport($transport);
-
-            // initialize server
-            require_once('Insight/Server.php');
-            self::$instance->server = new Insight_Server();
-            self::$instance->server->setConfig($config);
-
-            // NOTE: This may stop script execution if a transport data request is detected
-            $transport->setServer(self::$instance->server);
-            $transport->listen();
-
-            // NOTE: This may stop script execution if a server request is detected
-            self::$instance->server->listen();
-
-            // send package info
-            // TODO: Figure out a way to not send this all the time
-            //       Could be done via static data structures with checksums where the client announces which
-            //       data structures it has by sending the checksum in the request headers
-            if($packageInfo = $config->getPackageInfo()) {
-                self::to('package')->setInfo($packageInfo);
-            }
-            self::to('controller')->setServerUrl(self::$instance->server->getUrl());
-
-            // Look for x-insight trigger
-            $insight = false;
-            if(isset($_GET['x-insight'])) {
-                $insight = $_GET['x-insight'];
-            }
-            if(isset($_POST['x-insight'])) {
-                $insight = $_POST['x-insight'];
-            }
-            if($insight=='inspect' || Insight_Server::getRequestHeader('x-insight')=='inspect') {
-                Insight_Helper::to('controller')->triggerInspect();
+        } catch(Exception $e) {
+            if(!Insight_Helper::debug('Initialization Error: ' . $e->getMessage())) {
+                throw $e;
             }
         }
         return self::$instance;
@@ -129,7 +142,8 @@ class Insight_Helper
         if(!$this->dispatcher) {
             require_once('Insight/Dispatcher.php');
             $this->dispatcher = new Insight_Dispatcher();
-            $this->dispatcher->setSenderID($this->config->getPackageId());
+            $this->dispatcher->setHelper($this);
+            $this->dispatcher->setSenderID($this->config->getPackageId() . ((self::$senderLibrary)?'?lib='.self::$senderLibrary:''));
             $this->dispatcher->setChannel($this->getChannel());
         }
         return $this->dispatcher;
@@ -300,6 +314,14 @@ class Insight_Helper
         }
         return false;
     }
+
+    public static function debug($message) {
+        if(!defined('INSIGHT_DEBUG') || constant('INSIGHT_DEBUG')!==true) {
+            return false;
+        }
+        echo '<div style="border: 2px solid black; background-color: red;"> <span style="font-weight: bold;">[INSIGHT]</span> ' . $message . '</div>';
+        return true;
+    }
 }
 
 class Insight_Helper__NullMessage {
@@ -310,13 +332,15 @@ class Insight_Helper__NullMessage {
 
 function Insight_Helper__shutdown() {
     $insight = Insight_Helper::getInstance();
-    
+
     // only send headers if this was not a transport request
-    if(Insight_Server::getRequestHeader('x-insight')=="transport") {
+    if(class_exists('Insight_Server') && Insight_Server::getRequestHeader('x-insight')=="transport") {
         return;
     }
 
-    $insight->getDispatcher()->getChannel()->flush();
+    Insight_Helper::debug('Flushing headers');
+
+    $insight->getDispatcher()->getChannel()->flush(false, true);
 }
 
 

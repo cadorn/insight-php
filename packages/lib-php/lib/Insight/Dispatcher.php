@@ -12,6 +12,13 @@ class Insight_Dispatcher implements Wildfire_Channel_FlushListener
     private $channel = null;
     private $messageFactory = null;
     private $encoders = array();
+
+    private $helper = null;
+
+
+    public function setHelper($helper) {
+        $this->helper = $helper;
+    }
     
 //    protected $_registeredLanguagePacks = array();
 
@@ -119,12 +126,13 @@ class Insight_Dispatcher implements Wildfire_Channel_FlushListener
 
     public function getEncoder($name = 'Default')
     {
-        if(!isset($this->encoder[$name])) {
+        if(!isset($this->encoders[$name])) {
             require_once 'Insight/Encoder/' . $name . '.php';
             $class = 'Insight_Encoder_' . $name;
-            $this->encoder[$name] = new $class();
+            $this->encoders[$name] = $encoder = new $class();
+            $encoder->setOptions($this->helper->getConfig()->getEncoderOptions());
         }
-        return $this->encoder[$name];
+        return $this->encoders[$name];
     }
 
     public function send($data, $meta=array())
