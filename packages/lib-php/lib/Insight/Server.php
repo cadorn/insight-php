@@ -59,7 +59,11 @@ class Insight_Server
         }
 
         try {
-            $response = $this->respond(json_decode($_POST['payload'], true));
+            $payload = $_POST['payload'];
+            if(get_magic_quotes_gpc()) {
+                $payload = stripslashes($payload);
+            }
+            $response = $this->respond(json_decode($payload, true));
 
             if(!$response) {
                 header("HTTP/1.0 204 No Content");

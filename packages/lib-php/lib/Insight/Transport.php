@@ -22,7 +22,11 @@ class Insight_Transport extends Wildfire_Transport {
         if($this->server->getRequestHeader('x-insight')!='transport') {
             return;
         }
-        $payload = json_decode($_POST['payload'], true);
+        $payload = $_POST['payload'];
+        if(get_magic_quotes_gpc()) {
+            $payload = stripslashes($payload);
+        }
+        $payload = json_decode($payload, true);
         $file = $this->getPath($payload['key']);
         if(file_exists($file)) {
             readfile($file);
