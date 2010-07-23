@@ -45,7 +45,7 @@ class Insight_Helper
                 // enable output buffering if not enabled
                 if(!($ob = ini_get('output_buffering')) || $ob==4096) {
                     // @see http://ca.php.net/manual/en/function.ob-get-level.php
-                    if(ob_get_level()==1) { // ob_start() has not been called prior
+                    if(ob_get_level()<=1) { // ob_start() has not been called prior
                         ob_start();
                     }
                 }
