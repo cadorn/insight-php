@@ -2,6 +2,7 @@
 
 require_once('Insight/Util.php');
 require_once('Insight/Plugin/Group.php');
+require_once('Insight/Plugin/Selective.php');
 
 
 class Insight_Plugin_Console {
@@ -120,6 +121,13 @@ class Insight_Plugin_Console {
             'title' => $title,
             'data' => $data,
             'header' => $header
+        ));
+    }
+
+    public function on($path) {
+        return $this->message->api(new Insight_Plugin_Selective())->meta(array(
+            'selective' => true,
+            'group' => $path
         ));
     }
 
