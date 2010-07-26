@@ -58,7 +58,7 @@ class Insight_Server
             return;
         }
 
-        try {
+//        try {
             $payload = $_POST['payload'];
             if(get_magic_quotes_gpc()) {
                 $payload = stripslashes($payload);
@@ -83,7 +83,9 @@ class Insight_Server
                         break;
                 }
             }
+/*
         } catch(Exception $e) {
+            throw $e;
             header("HTTP/1.0 500 Internal Server Error");
             header("Status: 500 Internal Server Error");
 
@@ -91,6 +93,7 @@ class Insight_Server
 
             // TODO: Log error to insight client
         }
+*/        
         exit;
     }
 

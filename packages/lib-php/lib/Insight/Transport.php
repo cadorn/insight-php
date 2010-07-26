@@ -22,6 +22,7 @@ class Insight_Transport extends Wildfire_Transport {
         if($this->server->getRequestHeader('x-insight')!='transport') {
             return;
         }
+
         $payload = $_POST['payload'];
         if(get_magic_quotes_gpc()) {
             $payload = stripslashes($payload);
@@ -33,7 +34,7 @@ class Insight_Transport extends Wildfire_Transport {
             
             // delete old files
             // TODO: Only do this periodically
-  
+
             $time = time();
             foreach (new DirectoryIterator($this->getBasePath()) as $fileInfo) {
                 if($fileInfo->isDot()) continue;
@@ -46,16 +47,15 @@ class Insight_Transport extends Wildfire_Transport {
     }
 
     public function getBasePath() {
-        $path = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'insight';
+        $path = $this->config->getCachePath() . DIRECTORY_SEPARATOR . '_transport';
         if(!file_exists($path)) {
-            mkdir($path, 0775);
-            if(!file_exists($path)) {
+            if(!mkdir($path, 0775)) {
                 throw new Exception('Unable to create directory at: ' . $path);
             }
         }
         return $path;
     }
-    
+
     public function getPath($key) {
         return $this->getBasePath() . DIRECTORY_SEPARATOR . $key;
     }

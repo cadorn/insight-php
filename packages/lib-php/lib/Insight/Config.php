@@ -165,6 +165,18 @@ class Insight_Config
             $config['implements'][self::CONFIG_META_URI]['paths'] = $paths;
         }
 
+        if(isset($config['implements'][self::CONFIG_META_URI]['cache']) &&
+           isset($config['implements'][self::CONFIG_META_URI]['cache']['path'])) {
+            $path = $config['implements'][self::CONFIG_META_URI]['cache']['path'];
+            if(substr($path, 0, 2)=="./") {
+                $normalizedPath = realpath( dirname($this->file) . DIRECTORY_SEPARATOR . substr($path,2) );
+                if(!$normalizedPath) {
+                    $normalizedPath = realpath(dirname($this->file)) . DIRECTORY_SEPARATOR . substr($path,2);
+                }
+                $config['implements'][self::CONFIG_META_URI]['cache']['path'] = $normalizedPath;
+            }
+        }
+
         return $config;
     }
 
@@ -216,6 +228,9 @@ class Insight_Config
         }
         if(!isset($config['renderers'])) {
             throw new Exception('"renderers" config property not set for ' . $CONFIG_META_URI . '  in ' . $this->file);
+        }
+        if(isset($config['cache']) && isset($config['cache']['path']) && !file_exists($config['cache']['path'])) {
+            throw new Exception('"cache.path" [' . $config['cache']['path'] . '] does not exist for ' . $CONFIG_META_URI . '  in ' . $this->file);
         }
     }
     
@@ -316,5 +331,22 @@ class Insight_Config
             return array();
         }
         return $this->config['implements'][self::CONFIG_META_URI]['options']['encoder'];
+    }
+
+    public function getCachePath($basePathOnly=false) {
+        $nsPath = 'cadorn.org' . DIRECTORY_SEPARATOR . 'insight';
+        if(!isset($this->config['implements'][self::CONFIG_META_URI]['cache']) ||
+           !isset($this->config['implements'][self::CONFIG_META_URI]['cache']['path'])) {
+            // check if we have a central PINF cache path
+            // NOTE: Assumes we are running on a UNIX filesystem
+            $path = '/pinf';
+            if(is_dir($path)) {
+                return ($basePathOnly)?$path:$path . '/cache/cadorn.org/insight';
+            }
+            return sys_get_temp_dir() . DIRECTORY_SEPARATOR . $nsPath;
+        }
+        return ($basePathOnly)?
+                $this->config['implements'][self::CONFIG_META_URI]['cache']['path']:
+                $this->config['implements'][self::CONFIG_META_URI]['cache']['path'] . DIRECTORY_SEPARATOR . $nsPath;
     }
 }

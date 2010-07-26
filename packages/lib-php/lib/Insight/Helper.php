@@ -14,6 +14,7 @@ class Insight_Helper
     private $dispatcher = null;
     private $announceReceiver = null;
         
+    private $authorized = false;
     private $enabled = false;
     
     private $plugins = array();
@@ -22,7 +23,7 @@ class Insight_Helper
     public static function isInitialized() {
         return !!(self::$instance);
     }
-    
+
     public static function setSenderLibrary($stringPointer) {
         self::$senderLibrary = $stringPointer;
     }
@@ -31,17 +32,42 @@ class Insight_Helper
         if(self::$instance) {
             throw new Exception("Insight_Helper already initialized!");
         }
-        
+
         try {
+
+            // ensure min php version
+            if(version_compare(phpversion(), '5.1') == -1) {
+                throw new Exception('PHP version 5.1+ required. Your version: ' . phpversion());
+            }
 
             $config = new Insight_Config();
             $config->loadFromFile($configPath, $additionalConfig);
     
             self::$instance = new self();
             self::$instance->setConfig($config);
-    
+
             if(self::$instance->isClientAuthorized()) {
-                            
+
+                self::$instance->authorized = true;
+
+                // ensure cache path works
+                $cachePath = $config->getCachePath();
+                if(!file_exists($cachePath)) {
+                    $baseCachePath = $config->getCachePath(true);
+                    if(!is_writable($baseCachePath)) {
+                        throw new Exception('Error creating cache path. Insufficient permissions. Directory not writable: ' . $baseCachePath);
+                    }
+                    if(!mkdir($cachePath, 0775, true)) {
+                        throw new Exception('Error creating cache path at: ' . $cachePath);
+                    }
+                }
+                if(!is_dir($cachePath)) {
+                    throw new Exception('Cache path not a directory: ' . $cachePath);
+                }
+                if(!is_writable($cachePath)) {
+                    throw new Exception('Cache path not writable: ' . $cachePath);
+                }
+
                 // enable output buffering if not enabled
                 if(!($ob = ini_get('output_buffering')) || $ob==4096) {
                     // @see http://ca.php.net/manual/en/function.ob-get-level.php
@@ -50,12 +76,12 @@ class Insight_Helper
                     }
                 }
     
-                // enable insight
+                // always enable insight for now
                 self::$instance->enabled = true;
     
                 // flush on shutdown
                 register_shutdown_function('Insight_Helper__shutdown');
-    
+
                 // set transport
                 require_once('Insight/Transport.php');
                 $transport = new Insight_Transport();
@@ -96,6 +122,16 @@ class Insight_Helper
                 }
             }
         } catch(Exception $e) {
+
+            // disable sending of data
+            self::$instance->enabled = false;
+
+            header("HTTP/1.0 500 Internal Server Error");
+            header("Status: 500 Internal Server Error");
+            if(self::$instance->authorized) {
+                header('x-insight-status: ERROR');
+                header('x-insight-status-msg: ' . $e->getMessage());
+            }
             if(!Insight_Helper::debug('Initialization Error: ' . $e->getMessage())) {
                 throw $e;
             }
@@ -315,7 +351,7 @@ class Insight_Helper
         return false;
     }
 
-    public static function debug($message) {
+    public static function debug($message, $type=null) {
         if(!defined('INSIGHT_DEBUG') || constant('INSIGHT_DEBUG')!==true) {
             return false;
         }
@@ -335,6 +371,11 @@ function Insight_Helper__shutdown() {
 
     // only send headers if this was not a transport request
     if(class_exists('Insight_Server') && Insight_Server::getRequestHeader('x-insight')=="transport") {
+        return;
+    }
+
+    // if disabled do not flush headers
+    if(!$insight->getEnabled()) {
         return;
     }
 
