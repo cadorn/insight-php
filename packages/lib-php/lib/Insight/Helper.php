@@ -128,7 +128,7 @@ class Insight_Helper
 
             header("HTTP/1.0 500 Internal Server Error");
             header("Status: 500 Internal Server Error");
-            if(self::$instance->authorized) {
+            if(isset(self::$instance->authorized) && self::$instance->authorized) {
                 header('x-insight-status: ERROR');
                 header('x-insight-status-msg: ' . $e->getMessage());
             }
@@ -261,6 +261,7 @@ class Insight_Helper
     }
 
     protected function isClientAuthorized() {
+
         // verify IP
         $authorized = false;
         $ips = $this->config->getIPs();

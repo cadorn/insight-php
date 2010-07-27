@@ -339,14 +339,13 @@ class Insight_Config
            !isset($this->config['implements'][self::CONFIG_META_URI]['cache']['path'])) {
             // check if we have a central PINF cache path
             // NOTE: Assumes we are running on a UNIX filesystem
-            $path = '/pinf';
+            $path = '/pinf/cache';
             if(is_dir($path)) {
-                return ($basePathOnly)?$path:$path . '/cache/cadorn.org/insight';
+                return $path . ( ($basePathOnly) ? '' : (DIRECTORY_SEPARATOR . $nsPath) );
             }
-            return sys_get_temp_dir() . DIRECTORY_SEPARATOR . $nsPath;
+            return sys_get_temp_dir() . ( ($basePathOnly) ? '' : (DIRECTORY_SEPARATOR . $nsPath) );
         }
-        return ($basePathOnly)?
-                $this->config['implements'][self::CONFIG_META_URI]['cache']['path']:
-                $this->config['implements'][self::CONFIG_META_URI]['cache']['path'] . DIRECTORY_SEPARATOR . $nsPath;
+        return $this->config['implements'][self::CONFIG_META_URI]['cache']['path'] .
+               ( ($basePathOnly) ? '' : (DIRECTORY_SEPARATOR . $nsPath) );
     }
 }
