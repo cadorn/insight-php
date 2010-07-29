@@ -1,12 +1,8 @@
 <?php
 
-class Insight_Plugin_Controller {
-    
-    protected $message = null;
+require_once('Insight/Plugin/API.php');
 
-    public function setMessage($message) {
-        $this->message = $message;
-    }
+class Insight_Plugin_Controller extends Insight_Plugin_API {
 
     public function triggerInspect() {
         return $this->message->meta(array(

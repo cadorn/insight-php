@@ -1,13 +1,10 @@
 <?php
 
-class Insight_Plugin_Timeline {
-    
-    protected $message = null;
+require_once('Insight/Plugin/API.php');
 
-    public function setMessage($message) {
-        $this->message = $message;
-    }
+class Insight_Plugin_Timeline extends Insight_Plugin_API {
 
+/*
     public function renderer($renderer) {
         return $this->message->meta(array(
             'renderer' => $renderer
@@ -20,4 +17,6 @@ class Insight_Plugin_Timeline {
             'value' => $value
         ));
     }
+*/
+
 }

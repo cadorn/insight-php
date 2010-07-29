@@ -5,8 +5,12 @@ class Insight_Plugin_API {
     protected $temporaryTraceOffset = null;
     protected $traceOffset = 4;
     protected $message = null;
+    protected $request = null;
 
 
+    public function setRequest($request) {
+        $this->request = $request;
+    }
 
     public function setMessage($message) {
         $oldmsg = $this->message;

@@ -110,8 +110,6 @@ class Insight_Message {
 
         $dispatcher = $this->helper->getDispatcher();
 
-        $info = $this->helper->getConfig()->getTargetInfo($this->to);
-
         $meta = $this->meta;
 
         if(isset($meta['renderer'])) {
@@ -121,6 +119,7 @@ class Insight_Message {
             $meta['renderer'] = implode(":", $parts);
         }
 
+        $info = $this->helper->getConfig()->getTargetInfo($this->to);
         if($this->once) {
             $dispatcher->sendOnce($this->once, $data, $meta, $info['implements']);
         } else {

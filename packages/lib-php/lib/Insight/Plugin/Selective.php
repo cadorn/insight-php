@@ -1,16 +1,12 @@
 <?php
 
 require_once('Insight/Util.php');
-require_once('Insight/Plugin/Group.php');
+require_once('Insight/Plugin/API.php');
 
-class Insight_Plugin_Selective extends Insight_Plugin_Group {
+class Insight_Plugin_Selective extends Insight_Plugin_API {
 
-    protected $request = null;
     protected $filters = null;
 
-    public function setRequest($request) {
-        $this->request = $request;
-    }
 
     protected function _loadFilters($skipAnnounce=false) {
         if($this->filters===null) {
