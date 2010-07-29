@@ -2,9 +2,9 @@
 
 class Insight_Plugin_FileViewer
 {
-    public function respond($server, $action, $args) {
+    public function respond($server, $request) {
 
-        if($action=='ListFiles') {
+        if($request->getAction()=='ListFiles') {
 /*            
             $basePath = $server->getOption('applicationRootPath');
             
@@ -60,7 +60,8 @@ class Insight_Plugin_FileViewer
             );
 */            
         } else
-        if($action=='GetFile') {
+        if($request->getAction()=='GetFile') {
+            $args = $request->getArguments();
 
             $file = false;
             if(isset($args['path'])) {

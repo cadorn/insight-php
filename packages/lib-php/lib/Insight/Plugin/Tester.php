@@ -2,11 +2,11 @@
 
 class Insight_Plugin_Tester
 {
-    public function respond($server, $action, $args) {
+    public function respond($server, $request) {
 
-        if($action=='TestClient') {
+        if($request->getAction()=='TestClient') {
 
-            FirePHP::to('controller')->triggerClientTest($args);
+            FirePHP::to('controller')->triggerClientTest($request->getArguments());
 
             return array(
                 'type' => 'text/plain',

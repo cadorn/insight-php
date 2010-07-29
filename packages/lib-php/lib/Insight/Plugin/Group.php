@@ -1,7 +1,8 @@
 <?php
 
+require_once('Insight/Plugin/Console.php');
+
 class Insight_Plugin_Group extends Insight_Plugin_Console {
-    
     
     public function open() {
         $this->message->meta($this->_addFileLineMeta(array(

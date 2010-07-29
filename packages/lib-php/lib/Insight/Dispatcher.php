@@ -14,6 +14,8 @@ class Insight_Dispatcher implements Wildfire_Channel_FlushListener
     private $encoders = array();
 
     private $helper = null;
+    
+    private $onceMessages = array();
 
 
     public function setHelper($helper) {
@@ -114,7 +116,22 @@ class Insight_Dispatcher implements Wildfire_Channel_FlushListener
 //            $this->_registeredLanguagePacks = array();
         }
     }
-    
+    public function channelFlushing(Wildfire_Channel $channel)
+    {
+        if($channel===$this->getChannel()) {
+            if($this->onceMessages) {
+                foreach( $this->onceMessages as $id => $message ) {
+                    if($message[2]) {
+                        $this->setReceiverID($message[2]);
+                    }
+                    $this->send($message[0], $message[1]);
+                }
+                $this->onceMessages = array();
+            }
+        }
+    }
+
+
     private function getNewMessage($meta)
     {
         if(!$this->messageFactory) {
@@ -135,8 +152,17 @@ class Insight_Dispatcher implements Wildfire_Channel_FlushListener
         return $this->encoders[$name];
     }
 
-    public function send($data, $meta=array())
+
+    public function sendOnce($id, $data, $meta=array(), $receiver=false)
     {
+        $this->onceMessages[$id] = array($data, $meta, $receiver);
+    }
+
+    public function send($data, $meta=array(), $receiver=false)
+    {
+        if($receiver) {
+            $this->setReceiverID($receiver);
+        }
         list($data, $meta) = $this->getEncoder((isset($meta['encoder']))?$meta['encoder']:'Default')->encode($data, $meta);
         return $this->sendRaw(
             $data,

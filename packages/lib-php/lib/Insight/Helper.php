@@ -8,6 +8,7 @@ class Insight_Helper
     
     private static $senderLibrary = null;
 
+    private $request = null;
     private $config = null;
     private $server = null;
     private $channel = null;
@@ -17,6 +18,7 @@ class Insight_Helper
     private $authorized = false;
     private $enabled = false;
     
+    private $apis = array();
     private $plugins = array();
     
     
@@ -99,7 +101,12 @@ class Insight_Helper
     
                 // NOTE: This may stop script execution if a server request is detected
                 self::$instance->server->listen();
-    
+                
+                // initialize request object
+                self::$instance->request = new Insight_Request();
+                self::$instance->request->setConfig($config);
+                self::$instance->request->initAppRequest($_SERVER);
+
                 // send package info
                 // TODO: Figure out a way to not send this all the time
                 //       Could be done via static data structures with checksums where the client announces which
@@ -108,7 +115,7 @@ class Insight_Helper
                     self::to('package')->setInfo($packageInfo);
                 }
                 self::to('controller')->setServerUrl(self::$instance->server->getUrl());
-    
+
                 // Look for x-insight trigger
                 $insight = false;
                 if(isset($_GET['x-insight'])) {
@@ -166,6 +173,10 @@ class Insight_Helper
     public function getConfig() {
         return $this->config;
     }
+    
+    public function getRequest() {
+        return $this->request;
+    }
 
     public function getEnabled() {
         return $this->enabled;
@@ -211,14 +222,14 @@ class Insight_Helper
         $instance = self::getInstance();
 
         if(!$instance->enabled) {
-            return new Insight_Helper__NullMessage();
+            return Insight_Helper::getNullMessage();
         }
 
         $info = $instance->config->getTargetInfo($name);
 
         if(!in_array($info['implements'], $instance->getAnnounceReceiver()->getReceivers())) {
             // if target was announced we allow it
-            return new Insight_Helper__NullMessage();
+            return Insight_Helper::getNullMessage();
         }
 
         require_once('Insight/Message.php');
@@ -230,7 +241,7 @@ class Insight_Helper
         require_once($info['api'] . ".php");
         $class = str_replace("/", "_", $info['api']);
 
-        $api = new $class();
+        $api = $instance->getApi($class);
         $message = $message->api($api);
         if(method_exists($api, 'getDefaultMeta')) {
             $message = $message->meta($api->getDefaultMeta());
@@ -239,12 +250,23 @@ class Insight_Helper
         return $message;
     }
 
+    public function getApi($class) {
+        if(!isset($this->apis[$class])) {
+            require_once(str_replace('_', '/', $class) . '.php');
+            $api = $this->apis[$class] = new $class();
+            if(method_exists($api, 'setRequest')) {
+                $api->setRequest($this->request);
+            }
+        }
+        return $this->apis[$class];
+    }
+
     public static function plugin($name) {
 
         $instance = self::getInstance();
 
         if(!$instance->enabled) {
-            return new Insight_Helper__NullMessage();
+            return Insight_Helper::getNullMessage();
         }
         
         if(!isset($instance->plugins[$name])) {
@@ -359,10 +381,20 @@ class Insight_Helper
         echo '<div style="border: 2px solid black; background-color: red;"> <span style="font-weight: bold;">[INSIGHT]</span> ' . $message . '</div>';
         return true;
     }
+
+    public static function getNullMessage() {
+        return new Insight_Helper__NullMessage();
+    }    
 }
 
 class Insight_Helper__NullMessage {
     public function __call($name, $arguments) {
+        if($name=='open') {
+            Insight_Message::openBlock();
+        } else
+        if($name=='close') {
+            Insight_Message::closeBlock();
+        }
         return $this;
     }
 }

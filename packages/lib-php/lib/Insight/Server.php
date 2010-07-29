@@ -2,6 +2,7 @@
 
 require_once('Insight/Plugin/Tester.php');
 require_once('Insight/Plugin/FileViewer.php');
+require_once('Insight/Request.php');
 
 class Insight_Server
 {
@@ -11,17 +12,24 @@ class Insight_Server
 
     function __construct() {
         // TODO: Load plugins dynamically based on server request
-        $this->registerPlugin(new Insight_Plugin_Tester());
-        $this->registerPlugin(new Insight_Plugin_FileViewer());
+//        $this->registerPlugin(new Insight_Plugin_Tester());
+//        $this->registerPlugin(new Insight_Plugin_FileViewer());
     }
-    
+
     public function setConfig($config) {
         $this->config = $config;
     }
-    
+
+    public function getConfig() {
+        return $this->config;
+    }
+
+
+/*    
     public function registerPlugin($plugin) {
         $this->plugins[strtolower(get_class($plugin))] = $plugin;
     }
+*/
 
     public function getUrl() {
         $info = $this->config->getServerInfo();
@@ -104,11 +112,26 @@ class Insight_Server
         if(!$payload['action']) {
             throw new Exception('$payload.action not set');
         }
-        if(!isset($this->plugins[strtolower($payload['target'])])) {
-            throw new Exception('$payload.target not found in $plugins');
+
+        $target = $payload['target'];
+        if(!isset($this->plugins[$target])) {
+            $file = str_replace('_', '/', $target) . '.php';
+            require_once($file);
+            if(!class_exists($target)) {
+                throw new Exception('Class ' . $target . ' not defined in: ' . $file);
+            }
+            $this->plugins[$target] = new $target();
         }
-        $plugin = $this->plugins[strtolower($payload['target'])];
-        return $plugin->respond($this, $payload['action'], (isset($payload['args']))?$payload['args']:array() );
+
+        $plugin = $this->plugins[$target];
+        
+        $request = new Insight_Request();
+        $request->setConfig($this->config);
+        $request->initServerRequest($payload);
+
+        $plugin->setRequest($request);
+
+        return $plugin->respond($this, $request);
     }
 
     public function getRequestHeader($Name) {

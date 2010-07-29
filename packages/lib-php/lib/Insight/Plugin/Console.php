@@ -1,33 +1,12 @@
 <?php
 
 require_once('Insight/Util.php');
-require_once('Insight/Plugin/Group.php');
-require_once('Insight/Plugin/Selective.php');
+require_once('Insight/Plugin/API.php');
 
-
-class Insight_Plugin_Console {
+class Insight_Plugin_Console extends Insight_Plugin_API {
     
-    protected $temporaryTraceOffset = null;
-    protected $traceOffset = 4;
-    protected $message = null;
     protected static $groupIndex = 0;
 
-
-    public function setMessage($message) {
-        $this->message = $message;
-    }
-
-/*
-    public function getDefaultMeta() {
-        return array(
-            'renderer' =>'php:variable'
-        );
-    }
-*/
-    
-    public function setTemporaryTraceOffset($offset) {
-        $this->temporaryTraceOffset = $offset;
-    }
 
     public function label($label) {
         return $this->message->meta(array(
@@ -75,7 +54,7 @@ class Insight_Plugin_Console {
         if(!$name) {
             $name = md5(uniqid() . microtime(true) . (self::$groupIndex++));
         }
-        return $this->message->api(new Insight_Plugin_Group())->meta(array(
+        return $this->message->api('Insight_Plugin_Group')->meta(array(
             'group' => $name
         ));
     }
@@ -125,29 +104,6 @@ class Insight_Plugin_Console {
     }
 
     public function on($path) {
-        return $this->message->api(new Insight_Plugin_Selective())->meta(array(
-            'selective' => true,
-            'group' => $path
-        ));
-    }
-
-    protected function _addFileLineMeta($meta=false, $data=false) {
-        if(!$meta) {
-            $meta = array();
-        }
-        if($data!==false && $data instanceof Exception && $this->temporaryTraceOffset==-1) {
-            $meta['file'] = $data->getFile();
-            $meta['line'] = $data->getLine();
-        } else {
-            $backtrace = debug_backtrace();
-            $offset = $this->traceOffset;
-            if($this->temporaryTraceOffset!==null) {
-                $offset = $this->temporaryTraceOffset;
-                $this->temporaryTraceOffset = null;
-            }
-            $meta['file'] = $backtrace[$offset]['file'];
-            $meta['line'] = $backtrace[$offset]['line'];
-        }
-        return $meta;
+        return $this->message->api('Insight_Plugin_Selective', true)->on($path);
     }
 }
