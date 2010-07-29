@@ -1,5 +1,6 @@
 <?php
 
+require_once('Insight/Util.php');
 require_once('Insight/Config.php');
 
 class Insight_Helper
@@ -124,7 +125,7 @@ class Insight_Helper
                 if(isset($_POST['x-insight'])) {
                     $insight = $_POST['x-insight'];
                 }
-                if($insight=='inspect' || Insight_Server::getRequestHeader('x-insight')=='inspect') {
+                if($insight=='inspect' || Insight_Util::getRequestHeader('x-insight')=='inspect') {
                     Insight_Helper::to('controller')->triggerInspect();
                 }
             }
@@ -203,7 +204,7 @@ class Insight_Helper
             $this->announceReceiver->setChannel($this->getChannel());
             // parse received headers
             // NOTE: This needs to be moved if we want to support multiple receivers
-            $this->getChannel()->parseReceived(getallheaders());
+            $this->getChannel()->parseReceived(Insight_Util::getallheaders());
         }
         return $this->announceReceiver;
     }
@@ -336,7 +337,7 @@ class Insight_Helper
 
     protected function getClientInfo() {
         // Check if insight client is installed
-        if(@preg_match_all('/^http:\/\/registry.pinf.org\/cadorn.org\/wildfire\/@meta\/protocol\/announce\/([\.\d]*)$/si',$this->getRequestHeader("x-wf-protocol-1"),$m) &&
+        if(@preg_match_all('/^http:\/\/registry.pinf.org\/cadorn.org\/wildfire\/@meta\/protocol\/announce\/([\.\d]*)$/si',Insight_Util::getRequestHeader("x-wf-protocol-1"),$m) &&
             version_compare($m[1][0],'0.1.0','>=')) {
             return array(
                 "client" => "insight",
@@ -350,7 +351,7 @@ class Insight_Helper
             return array("client" => "firephp");
         } else
         // Check if FirePHP is installed on client via X-FirePHP-Version header
-        if(@preg_match_all('/^([\.\d]*)$/si',$this->getRequestHeader("X-FirePHP-Version"),$m) &&
+        if(@preg_match_all('/^([\.\d]*)$/si',Insight_Util::getRequestHeader("X-FirePHP-Version"),$m) &&
             version_compare($m[1][0],'0.0.6','>=')) {
             return array("client" => "firephp");
         }
@@ -360,18 +361,6 @@ class Insight_Helper
     protected function getUserAgent() {
         if(!isset($_SERVER['HTTP_USER_AGENT'])) return false;
         return $_SERVER['HTTP_USER_AGENT'];
-    }
-
-    public static function getRequestHeader($Name) {
-        $headers = getallheaders();
-        if(isset($headers[$Name])) {
-            return $headers[$Name];
-        } else
-        // just in case headers got lower-cased in transport
-        if(isset($headers[strtolower($Name)])) {
-            return $headers[strtolower($Name)];
-        }
-        return false;
     }
 
     public static function debug($message, $type=null) {
@@ -403,7 +392,7 @@ function Insight_Helper__shutdown() {
     $insight = Insight_Helper::getInstance();
 
     // only send headers if this was not a transport request
-    if(class_exists('Insight_Server') && Insight_Server::getRequestHeader('x-insight')=="transport") {
+    if(class_exists('Insight_Server') && Insight_Util::getRequestHeader('x-insight')=="transport") {
         return;
     }
 

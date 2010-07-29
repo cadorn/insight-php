@@ -119,6 +119,9 @@ class Insight_Config
     }
 
     protected function getJsonError() {
+        if(!function_exists('json_last_error')) {
+            return 'json_last_error() not available!';
+        }
         switch(json_last_error()) {
             case JSON_ERROR_DEPTH:
                 return 'Maximum stack depth exceeded';

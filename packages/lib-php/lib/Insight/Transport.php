@@ -1,5 +1,6 @@
 <?php
 
+require_once('Insight/Util.php');
 require_once('Wildfire/Transport.php');
 
 class Insight_Transport extends Wildfire_Transport {
@@ -19,7 +20,7 @@ class Insight_Transport extends Wildfire_Transport {
     }
 
     public function listen() {
-        if($this->server->getRequestHeader('x-insight')!='transport') {
+        if(Insight_Util::getRequestHeader('x-insight')!='transport') {
             return;
         }
 

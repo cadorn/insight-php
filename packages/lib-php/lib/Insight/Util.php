@@ -82,4 +82,30 @@ class Insight_Util {
             return true;
         }
     }
+    
+    public static function getallheaders()
+    {
+        if(function_exists('getallheaders')) {
+            return getallheaders();
+        }
+        $headers = array();
+        foreach($_SERVER as $name => $value) {
+            if(substr($name, 0, 5) == 'HTTP_') {
+                $headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
+            }
+        }
+        return $headers;
+    }
+    
+    public static function getRequestHeader($Name) {
+        $headers = self::getallheaders();
+        if(isset($headers[$Name])) {
+            return $headers[$Name];
+        } else
+        // just in case headers got lower-cased in transport
+        if(isset($headers[strtolower($Name)])) {
+            return $headers[strtolower($Name)];
+        }
+        return false;
+    }    
 }

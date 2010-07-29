@@ -1,5 +1,6 @@
 <?php
 
+require_once('Insight/Util.php');
 require_once('Insight/Plugin/Tester.php');
 require_once('Insight/Plugin/FileViewer.php');
 require_once('Insight/Request.php');
@@ -62,7 +63,7 @@ class Insight_Server
         }
 */
         // TODO: Use wildfire headers to check for server request in future?
-        if(Insight_Server::getRequestHeader('x-insight')!='serve') {
+        if(Insight_Util::getRequestHeader('x-insight')!='serve') {
             return;
         }
 
@@ -134,18 +135,6 @@ class Insight_Server
         return $plugin->respond($this, $request);
     }
 
-    public function getRequestHeader($Name) {
-        $headers = getallheaders();
-        if(isset($headers[$Name])) {
-            return $headers[$Name];
-        } else
-        // just in case headers got lower-cased in transport
-        if(isset($headers[strtolower($Name)])) {
-            return $headers[strtolower($Name)];
-        }
-        return false;
-    }
-    
     public function canServeFile($file) {
         $file = realpath($file);
         if(!file_exists($file)) {
