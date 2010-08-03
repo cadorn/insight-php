@@ -9,7 +9,9 @@ class Insight_Transport extends Wildfire_Transport {
     
     private $config;
     private $server;
-
+    
+    private $lastKey = false;
+    
     
     public function setConfig($config) {
         $this->config = $config;
@@ -78,10 +80,15 @@ class Insight_Transport extends Wildfire_Transport {
     }
 
     public function getData($key) {
-        // not needed - see listen()
+        $file = $this->getPath($key);
+        if(!file_exists($file)) {
+            return false;
+        }
+        return file_get_contents($file);
     }
 
     public function setData($key, $value) {
+        $this->lastKey = $key;
         $file = $this->getPath($key);
         file_put_contents($file, $value);
         if(!file_exists($file)) {
@@ -89,4 +96,7 @@ class Insight_Transport extends Wildfire_Transport {
         }
     }
 
+    public function getLastKey() {
+        return $this->lastKey;
+    }
 }

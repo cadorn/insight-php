@@ -3,6 +3,7 @@
 class Insight_Request
 {
     protected $config = null;
+    protected $clientKey = false;
     protected $url = false;
     protected $action = false;
     protected $arguments = array();
@@ -11,6 +12,17 @@ class Insight_Request
     public function setConfig($config)
     {
         $this->config = $config;
+    }
+
+    public function setClientKey($key) {
+        $this->clientKey = $key;
+    }
+
+    public function getClientKey() {
+        if(!$this->clientKey) {
+            throw new Exception('Client key not set');
+        }
+        return $this->clientKey;
     }
 
     public function initServerRequest($payload)
@@ -62,21 +74,22 @@ class Insight_Request
         }
         return json_decode(file_get_contents($file), true);
     }
-    
+
     public function storeInCache($name, $object)
     {
         file_put_contents($this->_cachePathForName($name), json_encode($object));
     }
-    
+
     protected function _cachePathForName($name)
     {
         $url = $this->getUrl();
         if(!$url) {
             throw new Exception('URL must be set for request in order to use cache!');
         }
+
         $file = $this->config->getCachePath() . DIRECTORY_SEPARATOR .
                 '_request' . DIRECTORY_SEPARATOR .
-                md5($url);
+                md5('lkA022HSye2' . $this->getClientKey()) . '-' . md5($url);
         if(!file_exists($file)) {
             if(!mkdir($file, 0775, true)) {
                 throw new Exception('Error creating cache path at: ' . $file);

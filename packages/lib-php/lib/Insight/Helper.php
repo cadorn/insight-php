@@ -94,6 +94,7 @@ class Insight_Helper
                 // initialize server
                 require_once('Insight/Server.php');
                 self::$instance->server = new Insight_Server();
+                self::$instance->server->setHelper(self::$instance);
                 self::$instance->server->setConfig($config);
     
                 // NOTE: This may stop script execution if a transport data request is detected
@@ -106,6 +107,8 @@ class Insight_Helper
                 // initialize request object
                 self::$instance->request = new Insight_Request();
                 self::$instance->request->setConfig($config);
+                $clientInfo = self::$instance->getClientInfo();
+                self::$instance->request->setClientKey(implode(':', $clientInfo['authkeys']));
                 self::$instance->request->initAppRequest($_SERVER);
 
                 // send package info
@@ -147,7 +150,7 @@ class Insight_Helper
         return self::$instance;
     }
     
-    private function getChannel() {
+    public function getChannel() {
         if(!$this->channel) {
             require_once('Wildfire/Channel/HttpHeader.php');
             $this->channel = new Wildfire_Channel_HttpHeader();
@@ -335,7 +338,7 @@ class Insight_Helper
         return $authorized;
     }
 
-    protected function getClientInfo() {
+    public function getClientInfo() {
         // Check if insight client is installed
         if(@preg_match_all('/^http:\/\/registry.pinf.org\/cadorn.org\/wildfire\/@meta\/protocol\/announce\/([\.\d]*)$/si',Insight_Util::getRequestHeader("x-wf-protocol-1"),$m) &&
             version_compare($m[1][0],'0.1.0','>=')) {

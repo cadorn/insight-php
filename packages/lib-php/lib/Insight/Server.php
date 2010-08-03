@@ -7,7 +7,7 @@ require_once('Insight/Request.php');
 
 class Insight_Server
 {
-    
+    private $helper = null;
     private $config = null;
     private $plugins = array();
 
@@ -15,6 +15,10 @@ class Insight_Server
         // TODO: Load plugins dynamically based on server request
 //        $this->registerPlugin(new Insight_Plugin_Tester());
 //        $this->registerPlugin(new Insight_Plugin_FileViewer());
+    }
+
+    public function setHelper($helper) {
+        $this->helper = $helper;
     }
 
     public function setConfig($config) {
@@ -128,6 +132,8 @@ class Insight_Server
         
         $request = new Insight_Request();
         $request->setConfig($this->config);
+        $clientInfo = $this->helper->getClientInfo();
+        $request->setClientKey(implode(':', $clientInfo['authkeys']));
         $request->initServerRequest($payload);
 
         $plugin->setRequest($request);
