@@ -2,6 +2,7 @@
 
 require_once('Insight/Util.php');
 require_once('Insight/Config.php');
+require_once('Insight/Message.php');
 
 class Insight_Helper
 {
@@ -44,8 +45,12 @@ class Insight_Helper
             }
 
             $config = new Insight_Config();
-            $config->loadFromFile($configPath, $additionalConfig);
-    
+            if(is_array($configPath)) {
+                $config->loadFromArray($configPath, $additionalConfig);
+            } else {
+                $config->loadFromFile($configPath, $additionalConfig);
+            }
+
             self::$instance = new self();
             self::$instance->setConfig($config);
 
@@ -413,11 +418,47 @@ function Insight_Helper__shutdown() {
 // auto-initialize based on environment if applicable
 function Insight_Helper__main() {
     $additionalConfig = isset($GLOBALS['INSIGHT_ADDITIONAL_CONFIG'])?$GLOBALS['INSIGHT_ADDITIONAL_CONFIG']:false;
+    $insightConfigPath = getenv('INSIGHT_CONFIG_PATH');
     if(defined('INSIGHT_CONFIG_PATH')) {
-        Insight_Helper::init(constant('INSIGHT_CONFIG_PATH'), $additionalConfig);
+        $insightConfigPath = constant('INSIGHT_CONFIG_PATH');
+    }
+    if($insightConfigPath) {
+        if(defined('INSIGHT_IPS')) {
+            trigger_error('INSIGHT_IPS constant ignored as INSIGHT_CONFIG_PATH is defined', E_USER_WARNING);
+        }
+        if(defined('INSIGHT_AUTHKEYS')) {
+            trigger_error('INSIGHT_AUTHKEYS constant ignored as INSIGHT_CONFIG_PATH is defined', E_USER_WARNING);
+        }
+        if(defined('INSIGHT_SERVER_PATH')) {
+            trigger_error('INSIGHT_SERVER_PATH constant ignored as INSIGHT_CONFIG_PATH is defined', E_USER_WARNING);
+        }
+        Insight_Helper::init($insightConfigPath, $additionalConfig);
     } else
-    if(getenv('INSIGHT_CONFIG_PATH')) {
-        Insight_Helper::init(getenv('INSIGHT_CONFIG_PATH'), $additionalConfig);
+    if(defined('INSIGHT_IPS') || defined('INSIGHT_AUTHKEYS') || defined('INSIGHT_SERVER_PATH')) {
+        if(!defined('INSIGHT_IPS') || !defined('INSIGHT_AUTHKEYS') || !defined('INSIGHT_SERVER_PATH')) {
+            throw new Exception('INSIGHT_IPS, INSIGHT_AUTHKEYS and INSIGHT_SERVER_PATH constants must be defined if not using INSIGHT_CONFIG_PATH');
+        }
+        $config = array(
+            'package.json' => array(
+                'uid' => $_SERVER['HTTP_HOST'],
+                'implements' => array(
+                    'cadorn.org/insight/@meta/config/0' => array(
+                        'server' => array(
+                            'path' => constant('INSIGHT_SERVER_PATH')
+                        )
+                    )
+                )
+            ),
+            'credentials.json' => array(
+                'cadorn.org/insight/@meta/config/0' => array(
+                    'allow' => array(
+                        'ips' => explode(',', constant('INSIGHT_IPS')),
+                        'authkeys' => explode(',', constant('INSIGHT_AUTHKEYS'))
+                    )
+                )
+            )
+        );
+        Insight_Helper::init($config, $additionalConfig);
     }
 }
 

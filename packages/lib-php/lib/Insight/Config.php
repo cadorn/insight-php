@@ -63,6 +63,19 @@ class Insight_Config
         );
     }
 
+    public function loadFromArray($config, $additionalConfig) {
+        $this->config = $this->normalizeConfig($this->defaultConfig);
+        $this->config = Insight_Util::array_merge($this->config, $this->normalizeConfig($config['package.json']));
+        if($additionalConfig && is_array($additionalConfig)) {
+            $this->config = Insight_Util::array_merge($this->config, $this->normalizeConfig($additionalConfig));
+        }
+        $credentials = $this->normalizeCredentials($config['credentials.json']);
+        if(isset($credentials[self::CONFIG_META_URI])) {
+            $this->config['implements'][self::CONFIG_META_URI] = Insight_Util::array_merge($this->config['implements'][self::CONFIG_META_URI], $credentials[self::CONFIG_META_URI]);
+        }
+        $this->validate();
+    }
+
     public function loadFromFile($file, $additionalConfig) {
         if(!file_exists($file)) {
             throw new Exception('Config file not found at: ' . $file);
