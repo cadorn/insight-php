@@ -175,7 +175,9 @@ class Insight_Config
             $paths = array();
             foreach( $config['implements'][self::CONFIG_META_URI]['paths'] as $path => $instruction ) {
                 if(substr($path, 0, 2)=="./") {
-                    $paths[realpath( dirname($this->file) . DIRECTORY_SEPARATOR . substr($path,2) )] = $instruction;
+                    if($this->file) {
+                        $paths[realpath( dirname($this->file) . DIRECTORY_SEPARATOR . substr($path,2) )] = $instruction;
+                    }
                 } else {
                     $paths[realpath($path)] = $instruction;
                 }
@@ -189,11 +191,13 @@ class Insight_Config
            isset($config['implements'][self::CONFIG_META_URI]['cache']['path'])) {
             $path = $config['implements'][self::CONFIG_META_URI]['cache']['path'];
             if(substr($path, 0, 2)=="./") {
-                $normalizedPath = realpath( dirname($this->file) . DIRECTORY_SEPARATOR . substr($path,2) );
-                if(!$normalizedPath) {
-                    $normalizedPath = realpath(dirname($this->file)) . DIRECTORY_SEPARATOR . substr($path,2);
+                if($this->file) {
+                    $normalizedPath = realpath( dirname($this->file) . DIRECTORY_SEPARATOR . substr($path,2) );
+                    if(!$normalizedPath) {
+                        $normalizedPath = realpath(dirname($this->file)) . DIRECTORY_SEPARATOR . substr($path,2);
+                    }
+                    $config['implements'][self::CONFIG_META_URI]['cache']['path'] = $normalizedPath;
                 }
-                $config['implements'][self::CONFIG_META_URI]['cache']['path'] = $normalizedPath;
             }
         }
 

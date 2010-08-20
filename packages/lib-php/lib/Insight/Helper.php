@@ -391,6 +391,12 @@ class Insight_Helper__NullMessage {
         } else
         if($name=='close') {
             Insight_Message::closeBlock();
+        } else
+        if($name=='is') {
+            if(is_bool($arguments[0])) {
+                return !$arguments[0];
+            }
+            throw new Exception('non-boolean is() comparison not supported');
         }
         return $this;
     }
@@ -429,14 +435,21 @@ function Insight_Helper__main() {
         if(defined('INSIGHT_AUTHKEYS')) {
             trigger_error('INSIGHT_AUTHKEYS constant ignored as INSIGHT_CONFIG_PATH is defined', E_USER_WARNING);
         }
+        if(defined('INSIGHT_PATHS')) {
+            trigger_error('INSIGHT_PATHS constant ignored as INSIGHT_CONFIG_PATH is defined', E_USER_WARNING);
+        }
         if(defined('INSIGHT_SERVER_PATH')) {
             trigger_error('INSIGHT_SERVER_PATH constant ignored as INSIGHT_CONFIG_PATH is defined', E_USER_WARNING);
         }
         Insight_Helper::init($insightConfigPath, $additionalConfig);
     } else
-    if(defined('INSIGHT_IPS') || defined('INSIGHT_AUTHKEYS') || defined('INSIGHT_SERVER_PATH')) {
-        if(!defined('INSIGHT_IPS') || !defined('INSIGHT_AUTHKEYS') || !defined('INSIGHT_SERVER_PATH')) {
-            throw new Exception('INSIGHT_IPS, INSIGHT_AUTHKEYS and INSIGHT_SERVER_PATH constants must be defined if not using INSIGHT_CONFIG_PATH');
+    if(defined('INSIGHT_IPS') || defined('INSIGHT_AUTHKEYS') || defined('INSIGHT_PATHS') || defined('INSIGHT_SERVER_PATH')) {
+        if(!defined('INSIGHT_IPS') || !defined('INSIGHT_AUTHKEYS') || !defined('INSIGHT_PATHS') || !defined('INSIGHT_SERVER_PATH')) {
+            throw new Exception('INSIGHT_IPS, INSIGHT_AUTHKEYS, INSIGHT_PATHS and INSIGHT_SERVER_PATH constants must be defined if not using INSIGHT_CONFIG_PATH');
+        }
+        $paths = array();
+        foreach(explode(',', constant('INSIGHT_PATHS')) as $path) {
+            $paths[$path] = 'allow';
         }
         $config = array(
             'package.json' => array(
@@ -445,7 +458,8 @@ function Insight_Helper__main() {
                     'cadorn.org/insight/@meta/config/0' => array(
                         'server' => array(
                             'path' => constant('INSIGHT_SERVER_PATH')
-                        )
+                        ),
+                        'paths' => $paths
                     )
                 )
             ),

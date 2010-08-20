@@ -67,6 +67,12 @@ class Insight_Message {
             $message->to = $arguments[0];
             return $message;
         } else
+        if($name=='is') {
+            if(is_bool($arguments[0])) {
+                return $arguments[0];
+            }
+            throw new Exception('non-boolean is() comparison not supported');
+        } else
         if($name=='api') {
             $message = clone $this;
             $api = $arguments[0];
