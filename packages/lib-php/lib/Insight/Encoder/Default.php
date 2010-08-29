@@ -69,6 +69,9 @@ class Insight_Encoder_Default {
         } else
         if($name=='depthExtend') {
             return 0;
+        } else
+        if($name=='depthNoLimit') {
+            return false;
         }
         return null;
     }
@@ -78,7 +81,7 @@ class Insight_Encoder_Default {
         if($data!==self::UNDEFINED) {
             $this->setOrigin($data);
         }
-        
+
         if($meta!==self::UNDEFINED) {
             $this->setMeta($meta);
         }
@@ -247,6 +250,11 @@ class Insight_Encoder_Default {
     
     protected function _checkDepth($Type, $TypeDepth, $MaxDepth) {
 
+        $depthNoLimit = $this->getOption('depthNoLimit');
+        if($depthNoLimit===true) {
+            return false;
+        }
+
         $depthExtend = $this->getOption('depthExtend');
 
         $MaxDepth -= $depthExtend;
@@ -280,6 +288,7 @@ class Insight_Encoder_Default {
 
         $index = 0;
         $maxLength = $this->getOption('maxArrayLength');
+        $depthNoLimit = $this->getOption('depthNoLimit');
         foreach ($Variable as $key => $val) {
           
           // Encoding the $GLOBALS PHP array causes an infinite loop
@@ -299,7 +308,7 @@ class Insight_Encoder_Default {
           }
 
           $index++;
-          if($index>=$maxLength) {
+          if($index>=$maxLength && $depthNoLimit!==true) {
               if($this->getOption('treatArrayMapAsDictionary')) {
                   $return['...'] = array(
                     'encoder.trimmed' => true,
@@ -329,10 +338,11 @@ class Insight_Encoder_Default {
         $items = array();
         $index = 0;
         $maxLength = $this->getOption('maxArrayLength');
+        $depthNoLimit = $this->getOption('depthNoLimit');
         foreach ($Variable as $val) {
           $items[] = $this->_encodeVariable($val, 1, $ArrayDepth + 1, $MaxDepth + 1);
           $index++;
-          if($index>=$maxLength) {
+          if($index>=$maxLength && $depthNoLimit!==true) {
               $items[] = array(
                 'encoder.trimmed' => true,
                 'encoder.notice' => 'Max Array Length ('.$this->getOption('maxArrayLength').')'
@@ -368,6 +378,7 @@ class Insight_Encoder_Default {
         }
 
         $maxLength = $this->getOption('maxObjectLength');
+        $depthNoLimit = $this->getOption('depthNoLimit');
         $maxLengthReached = false;
         
         $members = (array)$Object;
@@ -378,7 +389,7 @@ class Insight_Encoder_Default {
               continue;
           }
           
-          if(count($return['dictionary'])>$maxLength) {
+          if(count($return['dictionary'])>$maxLength && $depthNoLimit!==true) {
               $maxLengthReached = true;
               break;
           }
@@ -501,7 +512,7 @@ class Insight_Encoder_Default {
                 $name = $parts[2];
               }
 
-              if(count($return['dictionary'])>$maxLength) {
+              if(count($return['dictionary'])>$maxLength && $depthNoLimit!==true) {
                   $maxLengthReached = true;
                   break;
               }
