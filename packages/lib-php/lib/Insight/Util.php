@@ -108,4 +108,20 @@ class Insight_Util {
         }
         return false;
     }
+    
+    public static function getInstallationId() {
+        $host = $_SERVER['HTTP_HOST'];
+        $port = $_SERVER['SERVER_PORT'];
+        $parts = explode(':', $host);
+        // port specified in $_SERVER['HTTP_HOST'] takes precedense
+        if(count($parts)==2) {
+            $host = $parts[0];
+            $port = $parts[1];
+        }
+        $id = implode('.', array_reverse(explode('.', $host)));
+        if($port && $port>0 && $port!='80') {
+            $id .= ":" . $port;
+        }
+        return $id;
+    }
 }

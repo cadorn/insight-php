@@ -23,6 +23,7 @@ class Insight_Helper
     private $apis = array();
     private $plugins = array();
     
+    private static $swallowDebugMessages = false;
     
     public static function isInitialized() {
         return !!(self::$instance);
@@ -99,10 +100,16 @@ class Insight_Helper
     
                 // NOTE: This may stop script execution if a transport data request is detected
                 $transport->setServer(self::$instance->server);
-                $transport->listen();
-    
+                if($transport->listen()===true) {
+                    self::$swallowDebugMessages = true;
+                    exit;
+                }
+
                 // NOTE: This may stop script execution if a server request is detected
-                self::$instance->server->listen();
+                if(self::$instance->server->listen()===true) {
+                    self::$swallowDebugMessages = true;
+                    exit;
+                }
                 
                 // initialize request object
                 self::$instance->request = new Insight_Request();
@@ -211,16 +218,7 @@ class Insight_Helper
         }
         return $this->announceReceiver;
     }
-    
-    
-/*
-    private function newMessage() {
-        require_once('Insight/Message.php');
-        $message = new Insight_Message();
-        $message->setConfig($this->config);
-        return $message->from($this->config->getAppID());
-    }
-*/
+
     public static function to($name) {
 
         $instance = self::getInstance();
@@ -308,7 +306,7 @@ class Insight_Helper
             // announce installation
             // NOTE: Only an IP match is required for this. If client is announcing itself ($clientInfo) we do NOT send this header!
             // TODO: Use wildfire for this?
-            header('x-insight-installation-id: ' . implode('.', array_reverse(explode('.', $_SERVER['SERVER_NAME']))));
+            header('x-insight-installation-id: ' . Insight_Util::getInstallationId());
             return false;
         }
 
@@ -367,7 +365,7 @@ class Insight_Helper
     }
 
     public static function debug($message, $type=null) {
-        if(!defined('INSIGHT_DEBUG') || constant('INSIGHT_DEBUG')!==true) {
+        if(!defined('INSIGHT_DEBUG') || constant('INSIGHT_DEBUG')!==true || self::$swallowDebugMessages===true) {
             return false;
         }
         echo '<div style="border: 2px solid black; background-color: red;"> <span style="font-weight: bold;">[INSIGHT]</span> ' . $message . '</div>';

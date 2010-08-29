@@ -22,6 +22,7 @@ class Insight_Config
             "implements" => array(
                 self::CONFIG_META_URI => array(
                     "server" => array(
+                        "secure" => false,
                         "path" => "/"
                     ),
                     "paths" => array(
@@ -230,31 +231,54 @@ class Insight_Config
         $CONFIG_META_URI = str_replace("http://registry.pinf.org/", "", self::CONFIG_META_URI);
         
         if(!isset($config['allow'])) {
-            throw new Exception('"allow" config property not set for ' . $CONFIG_META_URI . '  in ' . $this->file);
+            throw new Exception('"allow" config property not set for ' . $CONFIG_META_URI . ' in ' . $this->file);
         }
         if(!isset($config['allow']['ips'])) {
-            throw new Exception('"allow.ips" config property not set for ' . $CONFIG_META_URI . '  in ' . $this->file);
+            throw new Exception('"allow.ips" config property not set for ' . $CONFIG_META_URI . ' in ' . $this->file);
+        } else
+        if(!is_array($config['allow']['ips'])) {
+            throw new Exception('"allow.ips" config property not an array set for ' . $CONFIG_META_URI . ' in ' . $this->file);
+        } else
+        if(count($config['allow']['ips'])==0) {
+            throw new Exception('"allow.ips" config property does not include at least one IP set for ' . $CONFIG_META_URI . ' in ' . $this->file);
+        } else
+        if(count($config['allow']['ips'])>1 && in_array("*", $config['allow']['ips'])) {
+            throw new Exception('"allow.ips" config property includes "*" with other IPs. If "*" is used it must be the only element. Set for ' . $CONFIG_META_URI . ' in ' . $this->file);
         }
+
         if(!isset($config['allow']['authkeys'])) {
-            throw new Exception('"allow.authkeys" config property not set for ' . $CONFIG_META_URI . '  in ' . $this->file);
+            throw new Exception('"allow.authkeys" config property not set for ' . $CONFIG_META_URI . ' in ' . $this->file);
+        } else
+        if(!is_array($config['allow']['authkeys'])) {
+            throw new Exception('"allow.authkeys" config property not an array set for ' . $CONFIG_META_URI . ' in ' . $this->file);
+        } else
+        if(count($config['allow']['authkeys'])>1 && in_array("*", $config['allow']['authkeys'])) {
+            throw new Exception('"allow.authkeys" config property includes "*" with other authkeys. If "*" is used it must be the only element. Set for ' . $CONFIG_META_URI . ' in ' . $this->file);
         }
+
         if(!isset($config['server'])) {
-            throw new Exception('"server" config property not set for ' . $CONFIG_META_URI . '  in ' . $this->file);
+            throw new Exception('"server" config property not set for ' . $CONFIG_META_URI . ' in ' . $this->file);
         }
-        if(isset($config['server']) && !isset($config['server']['path'])) {
-            throw new Exception('"server.path" config property not set for ' . $CONFIG_META_URI . '  in ' . $this->file);
-        }            
+        if(!isset($config['server']['path'])) {
+            throw new Exception('"server.path" config property not set for ' . $CONFIG_META_URI . ' in ' . $this->file);
+        } else   
         if(substr($config['server']['path'], 0, 1)!="/" && substr($config['server']['path'], 0, 2)!="./") {
-            throw new Exception('"server.path" config property must begin with a forward slash for ' . $CONFIG_META_URI . '  in ' . $this->file);
-        }            
+            throw new Exception('"server.path" config property must begin with a forward slash for ' . $CONFIG_META_URI . ' in ' . $this->file);
+        }
+        if(isset($config['server']['port']) && (!is_numeric($config['server']['port']) || $config['server']['port']<=0)) {
+            throw new Exception('"server.port" config property is not a valid port set for ' . $CONFIG_META_URI . ' in ' . $this->file);
+        }
+        if(isset($config['server']['secure']) && !is_bool($config['server']['secure'])) {
+            throw new Exception('"server.secure" config property is not a boolean set for ' . $CONFIG_META_URI . ' in ' . $this->file);
+        }
         if(!isset($config['targets'])) {
-            throw new Exception('"targets" config property not set for ' . $CONFIG_META_URI . '  in ' . $this->file);
+            throw new Exception('"targets" config property not set for ' . $CONFIG_META_URI . ' in ' . $this->file);
         }
         if(!isset($config['renderers'])) {
-            throw new Exception('"renderers" config property not set for ' . $CONFIG_META_URI . '  in ' . $this->file);
+            throw new Exception('"renderers" config property not set for ' . $CONFIG_META_URI . ' in ' . $this->file);
         }
         if(isset($config['cache']) && isset($config['cache']['path']) && !file_exists($config['cache']['path'])) {
-            throw new Exception('"cache.path" [' . $config['cache']['path'] . '] does not exist for ' . $CONFIG_META_URI . '  in ' . $this->file);
+            throw new Exception('"cache.path" [' . $config['cache']['path'] . '] does not exist for ' . $CONFIG_META_URI . ' in ' . $this->file);
         }
     }
     

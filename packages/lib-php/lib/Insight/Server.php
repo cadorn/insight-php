@@ -38,6 +38,37 @@ class Insight_Server
 
     public function getUrl() {
         $info = $this->config->getServerInfo();
+
+        $url = array();
+        $host = $_SERVER['HTTP_HOST'];
+        if(isset($info['host'])) {
+            $host = $info['host'];
+        }
+        $port = $_SERVER['SERVER_PORT'];
+        $parts = explode(':', $host);
+        if(count($parts)==2) {
+            $host = $parts[0];
+            $port = $parts[1];
+        }
+        $secure = false;
+        if($port==443) {
+            $secure = true;
+            $port = false;
+        }
+        if(isset($info['port'])) {
+            $port = $info['port'];
+        }
+        if($info['secure']===true || $secure) {
+            $url[] = 'https';
+        } else {
+            $url[] = 'http';
+        }
+        $url[] = '://';
+        $url[] = $host;
+        if($port && $port>0 && $port!=80) {
+            $url[] = ':' . $port;
+        }
+
         $path = $info['path'];
         if(substr($path, 0, 2)=="./") {
             $pathInfo = parse_url("http://domain.com" . $_SERVER['REQUEST_URI']);
@@ -48,8 +79,8 @@ class Insight_Server
             }
             $path = implode("/", $pathParts) . '/' . substr($path, 2);
         }
-        // TODO: Use https if $info['secure'] == true
-        return 'http://' . $_SERVER['HTTP_HOST'] . $path;
+        $url[] = $path;
+        return implode('', $url);
     }
     
     public function getPath() {
@@ -68,7 +99,7 @@ class Insight_Server
 */
         // TODO: Use wildfire headers to check for server request in future?
         if(Insight_Util::getRequestHeader('x-insight')!='serve') {
-            return;
+            return false;
         }
 
 //        try {
@@ -106,8 +137,8 @@ class Insight_Server
 
             // TODO: Log error to insight client
         }
-*/        
-        exit;
+*/
+        return true;
     }
 
     protected function respond($payload) {

@@ -23,7 +23,7 @@ class Insight_Transport extends Wildfire_Transport {
 
     public function listen() {
         if(Insight_Util::getRequestHeader('x-insight')!='transport') {
-            return;
+            return false;
         }
 
         $payload = $_POST['payload'];
@@ -46,7 +46,7 @@ class Insight_Transport extends Wildfire_Transport {
                 }
             }
         }
-        exit;
+        return true;
     }
 
     public function getBasePath() {
