@@ -460,23 +460,25 @@ class Insight_Encoder_Default {
               }
             }
 
-            // NOTE: This is a bit of a hack but it works for now
-            if($Object instanceof Exception && $name=='trace' && $this->getOption('exception.traceOffset')!==null) {
-              $offset = $this->getOption('exception.traceOffset');
-              if($offset==-1) {
-                  array_unshift($value, array(
-                      'file' => $Object->getFile(),
-                      'line' =>  $Object->getLine(),
-                      'type' => 'throw',
-                      'class' => $class,
-                      'args' => array(
-                          $Object->getMessage()
-                      )
-                  ));
-              } else
-              if($offset>0) {
-                  array_splice($value, 0, $offset);
-              }
+            if($value!==self::UNDEFINED) {
+                // NOTE: This is a bit of a hack but it works for now
+                if($Object instanceof Exception && $name=='trace' && $this->getOption('exception.traceOffset')!==null) {
+                  $offset = $this->getOption('exception.traceOffset');
+                  if($offset==-1) {
+                      array_unshift($value, array(
+                          'file' => $Object->getFile(),
+                          'line' =>  $Object->getLine(),
+                          'type' => 'throw',
+                          'class' => $class,
+                          'args' => array(
+                              $Object->getMessage()
+                          )
+                      ));
+                  } else
+                  if($offset>0) {
+                      array_splice($value, 0, $offset);
+                  }
+                }
             }
             
             if($value!==self::UNDEFINED) {
