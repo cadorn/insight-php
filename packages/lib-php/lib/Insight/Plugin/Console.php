@@ -84,12 +84,34 @@ class Insight_Plugin_Console extends Insight_Plugin_API {
                 $data[] = array($name, $value);
             }
         } else
-        if(is_array($data) && !Insight_Util::is_list($data)) {
-            // convert associative array to name/value table
-            $originalData = $data;
-            $data = array();
-            foreach( $originalData as $name => $value ) {
-                $data[] = array($name, $value);
+        if(is_array($data)) {
+            if(Insight_Util::is_list($data)) {
+                // we have a simple list
+                // this means we have a set of rows with cells or just a list where each element should be it's own row
+                $originalData = $data;
+                $isSimple = false;
+                foreach( $originalData as $value ) {
+                    // if value is not an array we assume we have a list where the value should be it's own row
+                    // i.e. we will wrap each value in an array to simulate a row with one cell
+                    if(!is_array($value) || !Insight_Util::is_list($value)) {
+                        $isSimple = true;
+                        break;
+                    }
+                }
+                if($isSimple) {
+                    // wrap each element in an array to simulate a row with one cell
+                    $data = array();
+                    foreach( $originalData as $name => $value ) {
+                        $data[] = array($value);
+                    }
+                }
+            } else {
+                // convert associative array to name/value table
+                $originalData = $data;
+                $data = array();
+                foreach( $originalData as $name => $value ) {
+                    $data[] = array($name, $value);
+                }
             }
         }
         
