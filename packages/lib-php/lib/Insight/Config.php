@@ -106,7 +106,7 @@ class Insight_Config
                 throw new Exception();
             }
         } catch(Exception $e) {
-            throw new Exception('Error (' . $this->getJsonError() . ') parsing JSON file: ' . $file);
+            throw new Exception('Error (' . $this->getJsonError($file) . ') parsing JSON file "' . $file . '". You can validate this file at http://www.jsonlint.com/ to find any errors.');
         }
         $json = $this->normalizeConfig($json);
         $this->config = Insight_Util::array_merge($this->config, $json);
@@ -123,7 +123,7 @@ class Insight_Config
                 throw new Exception();
             }
         } catch(Exception $e) {
-            throw new Exception('Error (' . $this->getJsonError() . ') parsing JSON file: ' . $file);
+            throw new Exception('Error (' . $this->getJsonError($file) . ') parsing JSON file "' . $file . '". You can validate this file at http://www.jsonlint.com/ to find any errors.');
         }
         $credentials = $this->normalizeCredentials($credentials);
         if(isset($credentials[self::CONFIG_META_URI])) {
@@ -132,19 +132,34 @@ class Insight_Config
         return true;
     }
 
-    protected function getJsonError() {
+    protected function getJsonError($file) {
+        $json = trim(file_get_contents($file));
+        if(!$json) {
+            return 'File is empty';
+        }
+        // check for comments and present customized error message if applicable
+        $json = explode("\n", $json);
+        for( $i=0 ; $i<sizeof($json) ; $i++ ) {
+            if(substr(trim($json[$i]), 0, 2)=='//') {
+                return 'Comments not allowed! Line: ' . ($i+1);
+            }
+        }
         if(!function_exists('json_last_error')) {
-            return 'json_last_error() not available!';
+            return 'Cannot get detailed error message. json_last_error() not available.';
         }
         switch(json_last_error()) {
-            case JSON_ERROR_DEPTH:
-                return 'Maximum stack depth exceeded';
-            case JSON_ERROR_CTRL_CHAR:
-                return 'Unexpected control character found';
-            case JSON_ERROR_SYNTAX:
-                return 'Syntax error, malformed JSON';
-            case JSON_ERROR_NONE:
-                return 'No errors';
+            case 0: // JSON_ERROR_NONE
+                return 'No error has occurred';
+            case 1: // JSON_ERROR_DEPTH
+                return 'The maximum stack depth has been exceeded';
+            case 2: // JSON_ERROR_STATE_MISMATCH
+                return 'Invalid or malformed JSON';
+            case 3: // JSON_ERROR_CTRL_CHAR
+                return 'Control character error, possibly incorrectly encoded';
+            case 4: // JSON_ERROR_SYNTAX
+                return 'Syntax error';
+            case 5: // JSON_ERROR_UTF8
+                return 'Malformed UTF-8 characters, possibly incorrectly encoded';
         }
     }
 
