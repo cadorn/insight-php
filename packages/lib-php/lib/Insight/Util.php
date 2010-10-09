@@ -65,8 +65,7 @@ class Insight_Util {
     }
 
 
-    public static function is_list($array)
-    {
+    public static function is_list($array) {
         $i = 0;
         foreach( array_keys($array) as $k ) {
             if( $k !== $i++ ) {
@@ -83,8 +82,11 @@ class Insight_Util {
         }
     }
 
-    public static function getallheaders()
-    {
+    public static function getallheaders() {
+        static $_cached_headers = false;
+        if($_cached_headers!==false) {
+            return $_cached_headers;
+        }
         $headers = array();
         if(function_exists('getallheaders')) {
             foreach( getallheaders() as $name => $value ) {
@@ -97,18 +99,22 @@ class Insight_Util {
                 }
             }
         }
-        return $headers;
+        return $_cached_headers = $headers;
     }
 
     public static function getRequestHeader($name) {
+        static $_cached_headers = array();
+        if(isset($_cached_headers[$name])) {
+            return $_cached_headers[$name];
+        }
         $name = strtolower($name);
         $headers = self::getallheaders();
         if(isset($headers[$name])) {
-            return $headers[$name];
+            return $_cached_headers[$name] = $headers[$name];
         }
-        return false;
+        return $_cached_headers[$name] = false;
     }
-    
+
     public static function getInstallationId() {
         $host = $_SERVER['HTTP_HOST'];
         $port = $_SERVER['SERVER_PORT'];

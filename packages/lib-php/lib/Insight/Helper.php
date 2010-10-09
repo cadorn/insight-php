@@ -337,10 +337,14 @@ class Insight_Helper
     }
 
     public function getClientInfo() {
+        static $_cached_info = false;
+        if($_cached_info!==false) {
+            return $_cached_info;
+        }
         // Check if insight client is installed
         if(@preg_match_all('/^http:\/\/registry.pinf.org\/cadorn.org\/wildfire\/@meta\/protocol\/announce\/([\.\d]*)$/si',Insight_Util::getRequestHeader("x-wf-protocol-1"),$m) &&
             version_compare($m[1][0],'0.1.0','>=')) {
-            return array(
+            return $_cached_info = array(
                 "client" => "insight",
                 "authkeys" => $this->getAnnounceReceiver()->getAuthkeys(),
                 "receivers" => $this->getAnnounceReceiver()->getReceivers()
@@ -349,14 +353,14 @@ class Insight_Helper
         // Check if FirePHP is installed on client via User-Agent header
         if(@preg_match_all('/\sFirePHP\/([\.\d]*)\s?/si',$this->getUserAgent(),$m) &&
             version_compare($m[1][0],'0.0.6','>=')) {
-            return array("client" => "firephp");
+            return $_cached_info = array("client" => "firephp");
         } else
         // Check if FirePHP is installed on client via X-FirePHP-Version header
         if(@preg_match_all('/^([\.\d]*)$/si',Insight_Util::getRequestHeader("X-FirePHP-Version"),$m) &&
             version_compare($m[1][0],'0.0.6','>=')) {
-            return array("client" => "firephp");
+            return $_cached_info = array("client" => "firephp");
         }
-        return false;
+        return $_cached_info = false;
     }
 
     protected function getUserAgent() {
