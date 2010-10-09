@@ -42,7 +42,7 @@ class Insight_Config
                             "implements" => "http://registry.pinf.org/cadorn.org/insight/@meta/receiver/insight/selective/0",
                             "api" => "Insight/Plugin/Selective"
                         ),
-                        "console" => array(
+                        "page" => array(
                             "implements" => "http://registry.pinf.org/cadorn.org/insight/@meta/receiver/console/page/0",
                             "api" => "Insight/Plugin/Page"
                         ),
