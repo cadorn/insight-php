@@ -6,6 +6,7 @@ require_once('Zend/Reflection/Class.php');
 class Insight_Encoder_Default {
 
     const UNDEFINED = '_U_N_D_E_F_I_N_E_D_';
+    const SKIP = '_S_K_I_P_';
 
     protected $options = array('maxDepth' => 5,
                                'maxObjectDepth' => 3,
@@ -129,7 +130,6 @@ class Insight_Encoder_Default {
             return $var;
         } else
 */
-
         if(is_null($Variable)) {
             $var = array('type'=>'constant', 'constant'=>'null');
             if($this->getOption('includeLanguageMeta')) {
@@ -162,6 +162,10 @@ class Insight_Encoder_Default {
             }
         } else
         if(is_array($Variable)) {
+            if(isset($Variable[self::SKIP])) {
+                unset($Variable[self::SKIP]);
+                return $Variable;
+            }
             $sub = null;
             // Check if we have an indexed array (list) or an associative array (map)
             if(Insight_Util::is_list($Variable)) {
@@ -271,6 +275,7 @@ class Insight_Encoder_Default {
         }
         if ($TypeDepth > $this->getOption('max' . $Type . 'Depth')) {
             return array(
+                'value' => null,
                 'meta' => array(
                     'encoder.trimmed' => true,
                     'encoder.notice' => 'Max ' . $Type . ' Depth ('.$this->getOption('max' . $Type . 'Depth').')'
@@ -289,8 +294,9 @@ class Insight_Encoder_Default {
         $index = 0;
         $maxLength = $this->getOption('maxArrayLength');
         $depthNoLimit = $this->getOption('depthNoLimit');
+        $isGlobals = false;
+        
         foreach ($Variable as $key => $val) {
-          
           // Encoding the $GLOBALS PHP array causes an infinite loop
           // if the recursion is not reset here as it contains
           // a reference to itself. This is the only way I have come up
@@ -298,7 +304,38 @@ class Insight_Encoder_Default {
           if($key=='GLOBALS'
              && is_array($val)
              && array_key_exists('GLOBALS',$val)) {
-            $val['GLOBALS'] = '** Recursion (GLOBALS) **';
+            $isGlobals = true;
+          }
+
+          if($isGlobals) {
+            switch($key) {
+                case 'GLOBALS':
+                    $val = array(
+                        self::SKIP => true,
+                        'encoder.trimmed' => true,
+                        'encoder.notice' => 'Recursion (GLOBALS)'
+                    );
+                    break;
+                case '_ENV':
+                case 'HTTP_ENV_VARS':
+                case '_POST':
+                case 'HTTP_POST_VARS':
+                case '_GET':
+                case 'HTTP_GET_VARS':
+                case '_COOKIE':
+                case 'HTTP_COOKIE_VARS':
+                case '_SERVER':
+                case 'HTTP_SERVER_VARS':
+                case '_FILES':
+                case 'HTTP_POST_FILES':
+                case '_REQUEST':
+                    $val = array(
+                        self::SKIP => true,
+                        'encoder.trimmed' => true,
+                        'encoder.notice' => 'Automatically Excluded (GLOBALS)'
+                    );
+                    break;
+            }
           }
 
           if($this->getOption('treatArrayMapAsDictionary')) {
@@ -312,15 +349,15 @@ class Insight_Encoder_Default {
               if($this->getOption('treatArrayMapAsDictionary')) {
                   $return['...'] = array(
                     'encoder.trimmed' => true,
-                    'encoder.notice' => 'Max Array Length ('.$this->getOption('maxArrayLength').')'
+                    'encoder.notice' => 'Max Array Length ('.$maxLength.') ' . (count($Variable)-$maxLength) . ' more'
                   );
               } else {
                   $return[] = array(array(
                     'encoder.trimmed' => true,
-                    'encoder.notice' => 'Max Array Length ('.$this->getOption('maxArrayLength').')'
+                    'encoder.notice' => 'Max Array Length ('.$maxLength.') ' . (count($Variable)-$maxLength) . ' more'
                   ), array(
                     'encoder.trimmed' => true,
-                    'encoder.notice' => 'Max Array Length ('.$this->getOption('maxArrayLength').')'
+                    'encoder.notice' => 'Max Array Length ('.$maxLength.') ' . (count($Variable)-$maxLength) . ' more'
                   ));
               }
               break;
@@ -345,7 +382,7 @@ class Insight_Encoder_Default {
           if($index>=$maxLength && $depthNoLimit!==true) {
               $items[] = array(
                 'encoder.trimmed' => true,
-                'encoder.notice' => 'Max Array Length ('.$this->getOption('maxArrayLength').')'
+                'encoder.notice' => 'Max Array Length ('.$maxLength.') ' . (count($Variable)-$maxLength) . ' more'
               );
               break;
           }
@@ -463,20 +500,26 @@ class Insight_Encoder_Default {
             if($value!==self::UNDEFINED) {
                 // NOTE: This is a bit of a hack but it works for now
                 if($Object instanceof Exception && $name=='trace' && $this->getOption('exception.traceOffset')!==null) {
-                  $offset = $this->getOption('exception.traceOffset');
-                  if($offset==-1) {
-                      array_unshift($value, array(
-                          'file' => $Object->getFile(),
-                          'line' =>  $Object->getLine(),
-                          'type' => 'throw',
-                          'class' => $class,
-                          'args' => array(
-                              $Object->getMessage()
-                          )
-                      ));
-                  } else
-                  if($offset>0) {
-                      array_splice($value, 0, $offset);
+                    $offset = $this->getOption('exception.traceOffset');
+                    if($offset==-1) {
+                        array_unshift($value, array(
+                            'file' => $Object->getFile(),
+                            'line' =>  $Object->getLine(),
+                            'type' => 'throw',
+                            'class' => $class,
+                            'args' => array(
+                                $Object->getMessage()
+                            )
+                        ));
+                    } else
+                    if($offset>0) {
+                        array_splice($value, 0, $offset);
+                    }
+                }
+                if($Object instanceof Exception && $name=='trace' && $this->getOption('exception.traceDepth')!==null) {
+                  $depth = $this->getOption('exception.traceDepth');
+                  if($depth>0) {
+                      $value = array_slice($value, 0, $depth);
                   }
                 }
             }
@@ -558,12 +601,12 @@ class Insight_Encoder_Default {
               }
             }
         }
-        
+
         if($maxLengthReached) {
             unset($return['dictionary'][array_pop(array_keys($return['dictionary']))]);
             $return['dictionary']['...'] = array(
               'encoder.trimmed' => true,
-              'encoder.notice' => 'Max Object Length ('.$this->getOption('maxObjectLength').')'
+              'encoder.notice' => 'Max Object Length ('.$maxLength.') ' . (count($members)-$maxLength) . ' more'
             );
         }
 
