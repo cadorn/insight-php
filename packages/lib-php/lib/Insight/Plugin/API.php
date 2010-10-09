@@ -37,8 +37,12 @@ class Insight_Plugin_API {
                 $this->temporaryTraceOffset = null;
             }
             if($offset>=0) {
-                $meta['file'] = $backtrace[$offset]['file'];
-                $meta['line'] = $backtrace[$offset]['line'];
+                if(isset($backtrace[$offset]['file'])) {
+                    $meta['file'] = $backtrace[$offset]['file'];
+                }
+                if(isset($backtrace[$offset]['line'])) {
+                    $meta['line'] = $backtrace[$offset]['line'];
+                }
             }
         }
         return $meta;
