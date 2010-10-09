@@ -81,7 +81,7 @@ class Insight_Helper
                 ob_start();
 
                 // always enable insight for now
-                self::$instance->enabled = true;
+                self::$instance->setEnabled(true);
     
                 // flush on shutdown
                 register_shutdown_function('Insight_Helper__shutdown');
@@ -142,7 +142,7 @@ class Insight_Helper
         } catch(Exception $e) {
 
             // disable sending of data
-            self::$instance->enabled = false;
+            self::$instance->setEnabled(false);
 
             header("HTTP/1.0 500 Internal Server Error");
             header("Status: 500 Internal Server Error");
@@ -189,12 +189,16 @@ class Insight_Helper
         return $this->request;
     }
 
+    public function setEnabled($enabled) {
+        $this->enabled = $enabled;
+    }
+
     public function getEnabled() {
         return $this->enabled;
     }
 
     public function getDispatcher() {
-        if(!$this->enabled) {
+        if(!$this->getEnabled()) {
             throw new Exception("Insight is not enabled!");
         }
         if(!$this->dispatcher) {
@@ -223,7 +227,7 @@ class Insight_Helper
 
         $instance = self::getInstance();
 
-        if(!$instance->enabled) {
+        if(!$instance->getEnabled()) {
             return Insight_Helper::getNullMessage();
         }
 
@@ -267,7 +271,7 @@ class Insight_Helper
 
         $instance = self::getInstance();
 
-        if(!$instance->enabled) {
+        if(!$instance->getEnabled()) {
             return Insight_Helper::getNullMessage();
         }
         
