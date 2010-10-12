@@ -196,7 +196,7 @@ class Insight_Encoder_Default {
         if(is_string($Variable)) {
             $var = array('type'=>'text');
             // TODO: Add info about encoding
-            if(self::is_utf8($Variable)) {
+            if(Insight_Util::is_utf8($Variable)) {
                 $var['text'] = $Variable;
             } else {
                 $var['text'] = utf8_encode($Variable);
@@ -706,37 +706,5 @@ class Insight_Encoder_Default {
         }
         
         return array($m[1][0], $m[2][0]);
-    }
-
- 
-    /**
-     * is_utf8 - Checks if a string complies with UTF-8 encoding
-     * 
-     * @see http://us2.php.net/mb_detect_encoding#85294
-     */
-    protected static function is_utf8($str) {
-        $c=0; $b=0;
-        $bits=0;
-        $len=strlen($str);
-        for($i=0; $i<$len; $i++){
-            $c=ord($str[$i]);
-            if($c > 128){
-                if(($c >= 254)) return false;
-                elseif($c >= 252) $bits=6;
-                elseif($c >= 248) $bits=5;
-                elseif($c >= 240) $bits=4;
-                elseif($c >= 224) $bits=3;
-                elseif($c >= 192) $bits=2;
-                else return false;
-                if(($i+$bits) > $len) return false;
-                while($bits > 1){
-                    $i++;
-                    $b=ord($str[$i]);
-                    if($b < 128 || $b > 191) return false;
-                    $bits--;
-                }
-            }
-        }
-        return true;
-    }    
+    }   
 }
