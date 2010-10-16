@@ -1,5 +1,9 @@
 <?php
 
+if(!defined('E_USER_DEPRECATED ')) {
+    define('E_USER_DEPRECATED ', 16384);
+}
+
 require_once('Insight/Util.php');
 require_once('Insight/Plugin/API.php');
 
@@ -25,7 +29,15 @@ class Insight_Plugin_Console extends Insight_Plugin_API {
             'encoder.filter' => $filter
         ));
     }
-    
+
+    /**
+     * @deprecated
+     */
+    public function dump($key, $value) {
+        trigger_error('Use of Insight_Plugin_Console::dump() is DEPRECATED!', E_USER_DEPRECATED);
+        $this->label('Dump')->log(array($key => $value));
+    }
+
     public function log($data) {
         $this->message->meta($this->_addFileLineMeta(array(
             'priority' => 'log'
@@ -50,13 +62,20 @@ class Insight_Plugin_Console extends Insight_Plugin_API {
         ), $data))->send($data);
     }
 
-    public function group($name=null) {
+    public function group($name=null, $title=null) {
         if(!$name) {
             $name = md5(uniqid() . microtime(true) . (self::$groupIndex++));
         }
-        return $this->message->api('Insight_Plugin_Group')->meta(array(
+        $meta = array(
             'group' => $name
-        ));
+        );
+        if($title!==null) {
+            if(!is_string($title)) {
+                throw new Exception('Only string titles are supported for groups');
+            }
+            $meta['group.title'] = $title;
+        }
+        return $this->message->api('Insight_Plugin_Group')->meta($meta);
     }
 
     public function trace($title) {
