@@ -79,11 +79,12 @@ class Insight_Plugin_Console extends Insight_Plugin_API {
     }
 
     public function trace($title) {
-
         $trace = debug_backtrace();
         if(!$trace) return false;
         array_splice($trace, 0, $this->traceOffset-1);
-
+        if(isset($this->message->meta['encoder.trace.maxLength'])) {
+            $trace = array_splice($trace, 0, $this->message->meta['encoder.trace.maxLength']);
+        }
         $this->message->meta($this->_addFileLineMeta(array(
             'renderer' => 'insight:structures/trace',
             'encoder.depthExtend' => 5
@@ -150,7 +151,16 @@ class Insight_Plugin_Console extends Insight_Plugin_API {
 
     public function nolimit($nolimit=true) {
         return $this->message->meta(array(
-            'encoder.depthNoLimit' => ($nolimit===true)
+            'encoder.depthNoLimit' => ($nolimit===true),
+            'encoder.lengthNoLimit' => ($nolimit===true)
         ));
+    }
+
+    public function option($name, $value) {
+        return $this->message->meta(array($name => $value));
+    }
+
+    public function options($options) {
+        return $this->message->meta($options);
     }
 }

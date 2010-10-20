@@ -15,9 +15,10 @@ class Insight_Util {
     * The last character will be used to determine the merge type for any depper levels if existing.
     */
     public static function array_merge($a1, $a2, $MergeTypes=false, $_Level=0) {
-    
-        if( (!$a1 || gettype($a1)!='array') && (!$a2 || gettype($a2)!='array') ) return array();
-    
+
+        if(gettype($a1)!='array') return $a2;
+        if(gettype($a2)!='array') return $a1;
+
         $r = array();
     
         if(gettype($a1)!='array') {
