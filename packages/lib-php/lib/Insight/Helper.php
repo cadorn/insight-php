@@ -142,7 +142,9 @@ class Insight_Helper
         } catch(Exception $e) {
 
             // disable sending of data
-            self::$instance->setEnabled(false);
+            if(isset(self::$instance)) {
+                self::$instance->setEnabled(false);
+            }
 
             header("HTTP/1.0 500 Internal Server Error");
             header("Status: 500 Internal Server Error");
