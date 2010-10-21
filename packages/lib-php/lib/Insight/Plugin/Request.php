@@ -4,7 +4,7 @@ require_once('Insight/Plugin/API.php');
 
 class Insight_Plugin_Request extends Insight_Plugin_API {
 
-    public function console($name) {
+    public function console($name = 'Console') {
         return $this->message->api('Insight_Plugin_Console')->meta(array(
             'target' => 'console/' . $name
         ));
