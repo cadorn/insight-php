@@ -79,7 +79,7 @@ class Insight_Plugin_Selective extends Insight_Plugin_API {
 
             return array(
                 'type' => 'text/plain',
-                'data' => json_encode(array(
+                'data' => Insight_Util::json_encode(array(
                     'filters' => $this->filters
                 ))
             );

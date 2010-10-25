@@ -1,5 +1,7 @@
 <?php
 
+require_once('Insight/Util.php');
+
 class Insight_Request
 {
     protected $config = null;
@@ -72,12 +74,12 @@ class Insight_Request
         if(!file_exists($file)) {
             return false;
         }
-        return json_decode(file_get_contents($file), true);
+        return Insight_Util::json_decode(file_get_contents($file));
     }
 
     public function storeInCache($name, $object)
     {
-        file_put_contents($this->_cachePathForName($name), json_encode($object));
+        file_put_contents($this->_cachePathForName($name), Insight_Util::json_encode($object));
     }
 
     protected function _cachePathForName($name)

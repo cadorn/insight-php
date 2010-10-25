@@ -1,5 +1,7 @@
 <?php
 
+require_once('Insight/Util.php');
+
 class Insight_Encoder_JSON {
 
     const UNDEFINED = '_U_N_D_E_F_I_N_E_D_';
@@ -84,7 +86,7 @@ class Insight_Encoder_JSON {
             }
         }
 
-        return array(json_encode($graph), ($this->_meta)?$this->_meta:false);
+        return array(Insight_Util::json_encode($graph), ($this->_meta)?$this->_meta:false);
     }
 
 }

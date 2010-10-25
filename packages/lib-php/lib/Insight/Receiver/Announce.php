@@ -1,5 +1,6 @@
 <?php
 
+require_once('Insight/Util.php');
 require_once('Wildfire/Receiver.php');
 
 
@@ -13,7 +14,7 @@ class Insight_Receiver_Announce extends Wildfire_Receiver
 
     public function onMessageReceived(Wildfire_Message $message)
     {
-        $data = json_decode($message->getData(), true);
+        $data = Insight_Util::json_decode($message->getData());
         
         if(isset($data['authkey'])) {
             if(!isset($this->data['authkeys'])) {

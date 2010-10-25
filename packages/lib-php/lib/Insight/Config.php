@@ -101,7 +101,7 @@ class Insight_Config
             return false;
         }
         try {
-            $json = json_decode(file_get_contents($file), true);
+            $json = Insight_Util::json_decode(file_get_contents($file));
             if(!$json) {
                 throw new Exception();
             }
@@ -118,7 +118,7 @@ class Insight_Config
             return false;
         }
         try {
-            $credentials = json_decode(file_get_contents($file), true);
+            $credentials = Insight_Util::json_decode(file_get_contents($file));
             if(!$credentials) {
                 throw new Exception();
             }
@@ -402,11 +402,23 @@ class Insight_Config
            !isset($this->config['implements'][self::CONFIG_META_URI]['cache']['path'])) {
             // check if we have a central PINF cache path
             // NOTE: Assumes we are running on a UNIX filesystem
+            // TODO: Look for PINF_HOME or PINF_CACHE_DIR env vars instead of assuming
             $path = '/pinf/cache';
             if(is_dir($path)) {
                 return $path . ( ($basePathOnly) ? '' : (DIRECTORY_SEPARATOR . $nsPath) );
             }
-            return sys_get_temp_dir() . ( ($basePathOnly) ? '' : (DIRECTORY_SEPARATOR . $nsPath) );
+            $tmpDir = false;
+            if(function_exists('sys_get_temp_dir')) {
+                $tmpDir = sys_get_temp_dir();
+            } else {
+                $tmpDir = (($this->file)?dirname($this->file):dirname($_SERVER['SCRIPT_FILENAME'])) . DIRECTORY_SEPARATOR . '.cache';
+                if(!file_exists($tmpDir)) {
+                    if(!mkdir($tmpDir, 0775)) {
+                        throw new Exception('Unable to create directory at: ' . $tmpDir);
+                    }
+                }
+            }
+            return $tmpDir . ( ($basePathOnly) ? '' : (DIRECTORY_SEPARATOR . $nsPath) );
         }
         return $this->config['implements'][self::CONFIG_META_URI]['cache']['path'] .
                ( ($basePathOnly) ? '' : (DIRECTORY_SEPARATOR . $nsPath) );

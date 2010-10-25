@@ -236,7 +236,7 @@ class Insight_Helper
         $info = $instance->config->getTargetInfo($name);
 
         if(!in_array($info['implements'], $instance->getAnnounceReceiver()->getReceivers())) {
-            // if target was announced we allow it
+            // if target was not announced we do not allow it and swallow the messages
             return Insight_Helper::getNullMessage();
         }
 

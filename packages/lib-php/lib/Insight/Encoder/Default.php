@@ -115,7 +115,7 @@ class Insight_Encoder_Default {
             }
         }
 
-        return array(json_encode($graph), ($this->_meta)?$this->_meta:false);
+        return array(Insight_Util::json_encode($graph), ($this->_meta)?$this->_meta:false);
     }
 
 

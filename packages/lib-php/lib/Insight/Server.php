@@ -107,7 +107,7 @@ class Insight_Server
             if(get_magic_quotes_gpc()) {
                 $payload = stripslashes($payload);
             }
-            $response = $this->respond(json_decode($payload, true));
+            $response = $this->respond(Insight_Util::json_decode($payload));
 
             if(!$response) {
                 header("HTTP/1.0 204 No Content");
@@ -120,10 +120,10 @@ class Insight_Server
                     	break;
                     case 'json':
                         header("Content-Type: application/json");
-                        echo(json_encode($response['data']));
+                        echo Insight_Util::json_encode($response['data']);
                         break;
                     default:
-                        echo($response['data']);
+                        echo $response['data'];
                         break;
                 }
             }

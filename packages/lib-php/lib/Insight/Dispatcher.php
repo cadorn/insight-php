@@ -1,5 +1,6 @@
 <?php
 
+require_once('Insight/Util.php');
 require_once('Wildfire/Channel/FlushListener.php');
 
 class Insight_Dispatcher implements Wildfire_Channel_FlushListener
@@ -166,7 +167,7 @@ class Insight_Dispatcher implements Wildfire_Channel_FlushListener
         list($data, $meta) = $this->getEncoder((isset($meta['encoder']))?$meta['encoder']:'Default')->encode($data, $meta);
         return $this->sendRaw(
             $data,
-            ($meta)?json_encode($meta):''
+            ($meta)?Insight_Util::json_encode($meta):''
         );
     }
 

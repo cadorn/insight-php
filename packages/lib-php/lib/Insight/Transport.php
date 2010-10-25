@@ -30,7 +30,7 @@ class Insight_Transport extends Wildfire_Transport {
         if(get_magic_quotes_gpc()) {
             $payload = stripslashes($payload);
         }
-        $payload = json_decode($payload, true);
+        $payload = Insight_Util::json_decode($payload);
         $file = $this->getPath($payload['key']);
         if(file_exists($file)) {
             readfile($file);
