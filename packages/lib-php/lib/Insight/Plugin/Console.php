@@ -81,11 +81,17 @@ class Insight_Plugin_Console extends Insight_Plugin_API {
     public function trace($title) {
         $trace = debug_backtrace();
         if(!$trace) return false;
-        array_splice($trace, 0, $this->traceOffset-1);
+        $offset = $this->traceOffset;
+        if(isset($this->message->meta['encoder.trace.offsetAdjustment'])) {
+            $offset += $this->message->meta['encoder.trace.offsetAdjustment'];
+        }
+        array_splice($trace, 0, $offset-1);
         if(isset($this->message->meta['encoder.trace.maxLength'])) {
             $trace = array_splice($trace, 0, $this->message->meta['encoder.trace.maxLength']);
         }
         $this->message->meta($this->_addFileLineMeta(array(
+            'file' => $trace[0]['file'],
+            'line' => $trace[0]['line'],
             'renderer' => 'insight:structures/trace',
             'encoder.depthExtend' => 5
         )))->send(array(
@@ -156,11 +162,23 @@ class Insight_Plugin_Console extends Insight_Plugin_API {
         ));
     }
 
-    public function option($name, $value) {
-        return $this->message->meta(array($name => $value));
+    public function option($name, $value=null) {
+        if($value===null) {
+            if(isset($this->message->meta[$name])) {
+                return $this->message->meta[$name];
+            } else {
+                return null;
+            }
+        } else {
+            return $this->message->meta(array($name => $value));
+        }
     }
 
-    public function options($options) {
-        return $this->message->meta($options);
+    public function options($options=null) {
+        if($options===null) {
+            return $this->message->meta;
+        } else {
+            return $this->message->meta($options);
+        }
     }
 }
