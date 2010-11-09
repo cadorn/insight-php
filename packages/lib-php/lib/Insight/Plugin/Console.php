@@ -69,6 +69,9 @@ class Insight_Plugin_Console extends Insight_Plugin_API {
         $meta = array(
             'group' => $name
         );
+        if(isset($this->message->meta['group'])) {
+            $meta['group.parent'] = $this->message->meta['group'];
+        }
         if($title!==null) {
             if(!is_string($title)) {
                 throw new Exception('Only string titles are supported for groups');
