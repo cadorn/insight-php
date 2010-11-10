@@ -72,13 +72,22 @@ class Insight_Plugin_Console extends Insight_Plugin_API {
         if(isset($this->message->meta['group'])) {
             $meta['group.parent'] = $this->message->meta['group'];
         }
-        if($title!==null) {
-            if(!is_string($title)) {
-                throw new Exception('Only string titles are supported for groups');
-            }
-            $meta['group.title'] = $title;
+        // detach label
+        $label = null;
+        if(isset($this->message->meta['label'])) {
+            $label = $this->message->meta['label'];
+            unset($this->message->meta['label']);
         }
-        return $this->message->api('Insight_Plugin_Group')->meta($meta);
+        $group = $this->message->api('Insight_Plugin_Group')->meta($meta);
+        if($title!==null) {
+            $group->logGroupTitle($title, $label);
+//  NOTE: Keep this until the protocol is documented as it is another way to set the group title            
+//            if(!is_string($title)) {
+//                throw new Exception('Only string titles are supported for groups');
+//            }
+//            $meta['group.title'] = $title;
+        }
+        return $group;
     }
 
     public function trace($title) {
