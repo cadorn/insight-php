@@ -8,8 +8,8 @@ class Insight_Util {
     * @param array $a1
     * @param array $a2
     * @param string $MergeTypes A concatenated string of characters indicating the merge type at each level.
-    *                           "S" Means a soft merge (merge array indexes) and traverses into the value
-    *                           "H" Means a hard merge (overwrite same array indexes) and skips one level of value.
+    *                           "S" Means a soft merge (add/rechain overlapping array indexes for indexed arrays)
+    *                           "H" Means a hard merge (overwrite same array indexes for indexed arrays)
     *                           "A" Means add element only if key does not already exist
     *                           "R" Means a replacement and will stop traversing deeper
     * The last character will be used to determine the merge type for any depper levels if existing.
@@ -26,13 +26,17 @@ class Insight_Util {
         } else {
             if(gettype($a2)!='array') return $a1;
         }
-    
+
         $merge_type = false;
         if($MergeTypes!==false) {
             $merge_type = substr($MergeTypes,$_Level,1);
             if(!$merge_type) $merge_type = substr($MergeTypes,-1,1);
         }
-    
+
+        if($merge_type=='S' && self::is_list($a1) && self::is_list($a2)) {
+            return array_merge($a1, $a2);
+        }
+
         foreach( $a1 as $k => $v ) {
             if(isset($a2[$k])) {
                 if(gettype($v)=='array') {
