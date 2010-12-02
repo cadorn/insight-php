@@ -560,7 +560,7 @@ class Insight_Encoder_Default {
                 $name = $parts[2];
               }
 
-              if($maxLength>=0 && count($return['dictionary'])>$maxLength && lengthNoLimit!==true) {
+              if($maxLength>=0 && count($return['dictionary'])>$maxLength && $lengthNoLimit!==true) {
                   $maxLengthReached = true;
                   break;
               }
