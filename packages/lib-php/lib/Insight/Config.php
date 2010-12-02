@@ -34,6 +34,10 @@ class Insight_Config
                             "implements" => "http://registry.pinf.org/cadorn.org/insight/@meta/receiver/insight/controller/0",
                             "api" => "Insight/Plugin/Controller"
                         ),
+                        "plugin" => array(
+                            "implements" => "http://registry.pinf.org/cadorn.org/insight/@meta/receiver/insight/plugin/0",
+                            "api" => "Insight/Plugin/Plugin"
+                        ),
                         "package" => array(
                             "implements" => "http://registry.pinf.org/cadorn.org/insight/@meta/receiver/insight/package/0",
                             "api" => "Insight/Plugin/Package"

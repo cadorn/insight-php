@@ -191,6 +191,10 @@ class Insight_Helper
         return $this->request;
     }
 
+    public function getServer() {
+        return $this->server;
+    }
+
     public function setEnabled($enabled) {
         $this->enabled = $enabled;
     }
