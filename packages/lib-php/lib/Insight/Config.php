@@ -249,6 +249,19 @@ class Insight_Config
                 unset($config[$key]);
             }
         }
+        // remove comments in authkeys and IPs
+        if(isset($config[self::CONFIG_META_URI]) && isset($config[self::CONFIG_META_URI]['allow'])) {
+            foreach( array('ips', 'authkeys') as $section ) {
+                if(isset($config[self::CONFIG_META_URI]['allow'][$section])) {
+                    for( $i=0,$c=sizeof($config[self::CONFIG_META_URI]['allow'][$section]) ; $i<$c ; $i++ ) {
+                        $index = strpos($config[self::CONFIG_META_URI]['allow'][$section][$i], '//');
+                        if($index>-1) {
+                            $config[self::CONFIG_META_URI]['allow'][$section][$i] = trim(substr($config[self::CONFIG_META_URI]['allow'][$section][$i], 0, $index));
+                        }
+                    }
+                }
+            }
+        }        
         return $config;
     }
     
