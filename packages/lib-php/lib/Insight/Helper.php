@@ -9,6 +9,8 @@ class Insight_Helper
     private static $instance = null;
     
     private static $senderLibrary = null;
+    
+    private $listeners = array();
 
     private $request = null;
     private $config = null;
@@ -19,7 +21,8 @@ class Insight_Helper
         
     private $authorized = false;
     private $enabled = false;
-    
+    private $forceEnabled = false;
+
     private $apis = array();
     private $plugins = array();
     
@@ -33,7 +36,7 @@ class Insight_Helper
         self::$senderLibrary = $stringPointer;
     }
 
-    public static function init($configPath, $additionalConfig) {
+    public static function init($configPath, $additionalConfig, $options=array()) {
         if(self::$instance) {
             throw new Exception("Insight_Helper already initialized!");
         }
@@ -55,9 +58,17 @@ class Insight_Helper
             self::$instance = new self();
             self::$instance->setConfig($config);
 
-            if(self::$instance->isClientAuthorized()) {
+            self::$instance->authorized = self::$instance->isClientAuthorized();
+            self::$instance->forceEnabled = (isset($options['forceEnable']) && $options['forceEnable']===true)?true:false;
 
-                self::$instance->authorized = true;
+            if(self::$instance->authorized || self::$instance->forceEnabled) {
+                
+                // set a dummy channel if not authorized
+                // this will prevent all data from being sent while keeping all channel logic and listeners working
+                if(self::$instance->authorized!==true) {
+                    require_once('Wildfire/Channel/Dummy.php');
+                    self::$instance->channel = new Wildfire_Channel_Dummy();
+                }
 
                 // ensure cache path works
                 $cachePath = $config->getCachePath();
@@ -114,8 +125,9 @@ class Insight_Helper
                 // initialize request object
                 self::$instance->request = new Insight_Request();
                 self::$instance->request->setConfig($config);
-                $clientInfo = self::$instance->getClientInfo();
-                self::$instance->request->setClientKey(implode(':', $clientInfo['authkeys']));
+                if($clientInfo = self::$instance->getClientInfo()) {
+                    self::$instance->request->setClientKey(implode(':', $clientInfo['authkeys']));
+                }
                 self::$instance->request->initAppRequest($_SERVER);
 
                 // send package info
@@ -158,7 +170,31 @@ class Insight_Helper
         }
         return self::$instance;
     }
-    
+
+    public function registerListener($name, $listener) {
+        if(!isset($this->listeners[$name])) {
+            $this->listeners[$name] = array();
+        }
+        if(in_array($listener, $this->listeners[$name])) {
+            return;
+        }
+        $this->listeners[$name][] = $listener;
+    }
+
+    public function hasListenersFor($name) {
+        if(!isset($this->listeners[$name])) {
+            return false;
+        }
+        return true;
+    }
+
+    public function getListenersFor($name) {
+        if(!isset($this->listeners[$name])) {
+            return false;
+        }
+        return $this->listeners[$name];
+    }
+
     public function getChannel() {
         if(!$this->channel) {
             require_once('Wildfire/Channel/HttpHeader.php');
@@ -203,6 +239,10 @@ class Insight_Helper
         return $this->enabled;
     }
 
+    public function getAuthorized() {
+        return $this->authorized;
+    }
+
     public function getDispatcher() {
         if(!$this->getEnabled()) {
             throw new Exception("Insight is not enabled!");
@@ -239,9 +279,13 @@ class Insight_Helper
 
         $info = $instance->config->getTargetInfo($name);
 
-        if(!in_array($info['implements'], $instance->getAnnounceReceiver()->getReceivers())) {
-            // if target was not announced we do not allow it and swallow the messages
-            return Insight_Helper::getNullMessage();
+        // if forceEnabled we collect everything
+        // TODO: decide on what to collect based on config
+        if($instance->forceEnabled===false) {
+            if(!in_array($info['implements'], $instance->getAnnounceReceiver()->getReceivers())) {
+                // if target was not announced we do not allow it and swallow the messages
+                return Insight_Helper::getNullMessage();
+            }
         }
 
         require_once('Insight/Message.php');
@@ -388,7 +432,19 @@ class Insight_Helper
 
     public static function getNullMessage() {
         return new Insight_Helper__NullMessage();
-    }    
+    }
+    
+    public function relayPayload($payload) {
+        if(!$this->getEnabled()) {
+            return;
+        }
+        $receivers = array();
+        $info = $this->config->getTargetInfo('page');
+        $receivers[] = $info['implements'];
+        $info = $this->config->getTargetInfo('request');
+        $receivers[] = $info['implements'];
+        $this->getChannel()->relayData($payload, $receivers);
+    }
 }
 
 class Insight_Helper__NullMessage {
@@ -425,6 +481,22 @@ function Insight_Helper__shutdown() {
     Insight_Helper::debug('Flushing headers');
 
     $insight->getDispatcher()->getChannel()->flush(false, true);
+
+    if($insight->hasListenersFor('payload')) {
+        $transport = $insight->getChannel()->getTransport();
+        $contents = $transport->getData($transport->getLastKey());
+        foreach( $insight->getListenersFor('payload') as $listener ) {
+            $listener->onPayload($insight->getRequest, $contents);
+        }
+    }
+
+    // if not authorized we now destroy the cached data as it is no longer needed
+    // for later catching
+    if($insight->getAuthorized()!==true) {
+        $transport = $insight->getChannel()->getTransport();
+        $file = $transport->getPath($transport->getLastKey());
+        unlink($file);
+    }
 }
 
 
@@ -434,6 +506,10 @@ function Insight_Helper__main() {
     $insightConfigPath = getenv('INSIGHT_CONFIG_PATH');
     if(defined('INSIGHT_CONFIG_PATH')) {
         $insightConfigPath = constant('INSIGHT_CONFIG_PATH');
+    }
+    $options = array();
+    if(isset($GLOBALS['INSIGHT_FORCE_ENABLE'])) {
+        $options['forceEnable'] = ($GLOBALS['INSIGHT_FORCE_ENABLE']===true)?true:false;
     }
     if($insightConfigPath) {
         if(defined('INSIGHT_IPS')) {
@@ -448,7 +524,7 @@ function Insight_Helper__main() {
         if(defined('INSIGHT_SERVER_PATH')) {
             trigger_error('INSIGHT_SERVER_PATH constant ignored as INSIGHT_CONFIG_PATH is defined', E_USER_WARNING);
         }
-        Insight_Helper::init($insightConfigPath, $additionalConfig);
+        Insight_Helper::init($insightConfigPath, $additionalConfig, $options);
     } else
     if(defined('INSIGHT_IPS') || defined('INSIGHT_AUTHKEYS') || defined('INSIGHT_PATHS') || defined('INSIGHT_SERVER_PATH')) {
         if(!defined('INSIGHT_IPS') || !defined('INSIGHT_AUTHKEYS') || !defined('INSIGHT_PATHS') || !defined('INSIGHT_SERVER_PATH')) {
@@ -479,7 +555,7 @@ function Insight_Helper__main() {
                 )
             )
         );
-        Insight_Helper::init($config, $additionalConfig);
+        Insight_Helper::init($config, $additionalConfig, $options);
     }
 }
 
