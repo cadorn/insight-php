@@ -118,6 +118,14 @@ class Insight_Dispatcher implements Wildfire_Channel_FlushListener
             $this->setReceiverID($receiver);
         }
         list($data, $meta) = $this->getEncoder((isset($meta['encoder']))?$meta['encoder']:'Default')->encode($data, $meta);
+        if($meta) {
+            // remove helper options
+            foreach( $meta as $name => $value ) {
+                if(substr($name, 0,1 )==".") {
+                    unset($meta[$name]);
+                }
+            }
+        }
         return $this->sendRaw(
             $data,
             ($meta)?Insight_Util::json_encode($meta):''

@@ -5,6 +5,8 @@ require_once('Insight/Plugin/Plugin/Message.php');
 
 class Insight_Plugin_Plugin extends Insight_Plugin_API {
 
+    private $plugins = array();
+
     public function removeAll() {
         $this->message->meta(array(
             'encoder' => 'JSON',
@@ -12,35 +14,80 @@ class Insight_Plugin_Plugin extends Insight_Plugin_API {
         ))->send(true);
     }
 
-    public function plugin($alias) {
-        return $this->message->meta(array(
+    public function plugin($alias, $class=false) {
+        if(!preg_match_all('/^[A-Za-z0-9_\\-\\.\\/]*$/', $alias, $m)) {
+            throw new Exception("Invalid plugin alias '" . $alias . "'. May only contain [A-Za-z0-9_-./]");
+        }        
+        $meta = array(
             'alias' => $alias
-        ));
+        );
+        if($class!==false) {
+            $meta['.class'] = $class;
+        } else
+        if(isset($this->plugins[$alias])) {
+            $meta['.class'] = get_class($this->plugins[$alias]);
+        }
+        return $this->message->meta($meta);
+    }
+
+    public function getInstance() {
+        if(!isset($this->message->meta['alias'])) {
+            throw new Exception('Plugin alias not set! Use ->plugin("<alias>")-> first');
+        }
+        if(!isset($this->message->meta['.class'])) {
+            throw new Exception('Plugin class not set! Use ->plugin("<alias>", "<class>")-> or ->register() first');
+        }
+        $program = $this->loadProgram($this->message->meta['.class'], (isset($this->message->meta['.file']))?$this->message->meta['.file']:false);
+        $program->setAlias($this->message->meta['alias']);
+        return $this->plugins[$this->message->meta['alias']] = $program;
     }
 
     public function register($options) {
+        static $registeredPrograms = array();
 
         if(!isset($this->message->meta['alias'])) {
             throw new Exception('Plugin alias not set! Use ->plugin("<alias>")-> first');
         }
 
-        if(!isset($options['container'])) {
-            throw new Exception('Container not set');
+        $class = false;
+        if(isset($options['class'])) {
+            if(isset($this->message->meta['.class']) && $this->message->meta['.class']!=$options['class']) {
+                throw new Exception('Cannot register plugin with different class "' . $options['class'] . '" when plugin class "' . $this->message->meta['.class'] . '" already set via ->plugin()->');
+            }
+            $this->message->meta['.class'] = $class = $options['class'];
+        } else
+        if(isset($this->message->meta['.class'])) {
+            $class = $this->message->meta['.class'];
+        } else {
+            throw new Exception('No "class" provided when registering plugin');
         }
 
-        $program = $this->loadProgram($options['class'], $options['file']);
+        if(isset($options['file'])) {
+            $this->message->meta['.file'] = $options['file'];
+        }
+
+        $program = $this->loadProgram($class, (isset($options['file']))?$options['file']:false);
+
+        if(isset($registeredPrograms[$program->getId()])) {
+            // only send program registration message once
+            throw new Exception('Plugin "' . $class . '" has already been registered during this request! A plugin can only be registered once.');
+        }
+        $registeredPrograms[$program->getId()] = true;
 
         $program->setAlias($this->message->meta['alias']);
-        $program->setContainerName($options['container']);
 
         if(isset($options['forceReload']) && $options['forceReload']) {
             $program->setForceReload(true);
         }
 
-        $this->message->meta(array(
-            'encoder' => 'JSON',
-            'action' => 'register'
-        ))->send($program->getInsightRegistrationMessage());
+        $this->plugins[$this->message->meta['alias']] = $program;
+
+        foreach( $program->getInsightRegistrationMessages() as $message ) {
+            $this->message->meta(array(
+                'encoder' => 'JSON',
+                'action' => 'register'
+            ))->send($message);
+        }
     }
 
     public function sendSimpleMessage($message) {
@@ -65,7 +112,6 @@ class Insight_Plugin_Plugin extends Insight_Plugin_API {
 
             $program = $this->loadProgram($args['controllerClass'], $args['controllerFile']);
 
-            $program->setContainerName($args['container']);
             $program->setAlias($args['alias']);
 
             if(isset($args['forceReload']) && $args['forceReload']) {
@@ -74,7 +120,7 @@ class Insight_Plugin_Plugin extends Insight_Plugin_API {
 
             return array(
                 'type' => 'application/javascript',
-                'data' => $program->getWrappedProgram()
+                'data' => $program->getWrappedProgram($args['container'])
             );
         } else
         if($request->getAction()=='MessageProgram') {
@@ -83,15 +129,22 @@ class Insight_Plugin_Plugin extends Insight_Plugin_API {
 
             $program = $this->loadProgram($args['controllerClass'], $args['controllerFile']);
 
-            $program->setContainerName($args['container']);
             $program->setAlias($args['alias']);
 
-            $program->onMessage(new Insight_Plugin_Plugin_Message($args['message']));
+            $message = new Insight_Plugin_Plugin_Message($args['message']);
+            $response = $program->onMessage($message);
 
-            return array(
-                'type' => 'text/plain',
-                'data' => 'OK'
-            );
+            if($message->getType()=='simple-response') {
+                return array(
+                    'type' => 'text/plain',
+                    'data' => json_encode($response)
+                );
+            } else {
+                return array(
+                    'type' => 'text/plain',
+                    'data' => 'OK'
+                );
+            }
         }
         return array(
             'type' => 'error',
@@ -102,17 +155,19 @@ class Insight_Plugin_Plugin extends Insight_Plugin_API {
     protected function loadProgram($class, $file=null) {
 
         if(!class_exists($class)) {
-            if(!isset($file)) {
-                throw new Exception('File not set. Needed because class not found.');
-            }
-            if(!is_file($file) || !is_readable($file)) {
-                throw new Exception('File not accessible: ' . $file);
-            }
-            if(!require_once($file)) {
-                throw new Exception('Error while requiring file: ' . $file);
-            }
-            if(!class_exists($class)) {
-                throw new Exception('Class "' . $class . '" not declared in file: ' . $file);
+            if(!$file) {
+                // assuming $class is accessible via autoloader
+                new $class();
+            } else {
+                if(!is_file($file) || !is_readable($file)) {
+                    throw new Exception('File not accessible: ' . $file);
+                }
+                if(!require_once($file)) {
+                    throw new Exception('Error while requiring file: ' . $file);
+                }
+                if(!class_exists($class)) {
+                    throw new Exception('Class "' . $class . '" not declared in file: ' . $file);
+                }
             }
         }
 

@@ -1,11 +1,11 @@
 <?php
 
 require_once('Insight/Util.php');
+require_once('Insight/Program/JavaScript/Plugin.php');
 
 abstract class Insight_Program_JavaScript {
 
     protected $alias = null;
-    protected $containerName = null;
     protected $forceReload = false;
 
     public function setAlias($alias) {
@@ -16,151 +16,60 @@ abstract class Insight_Program_JavaScript {
         return $this->alias;
     }
 
-    public function setContainerName($name) {
-        $this->containerName = $name;
-    }
-
-    public function getContainerName() {
-        return $this->containerName;
-    }
-
     public function setForceReload($forceReload) {
         $this->forceReload = $forceReload;
     }
 
-    public function getInsightRegistrationMessage() {
+    public function getForceReload() {
+        return $this->forceReload;
+    }
+
+    public function getId() {
+        return Insight_Util::getInstallationId() . '/' . get_class($this);
+    }
+
+    public function getInsightRegistrationMessages() {
         $reflectionClass = new ReflectionClass(get_class($this));
-        return array(
-            'id' => Insight_Util::getInstallationId() . '/' . get_class($this) . '/' . $this->containerName,
-            'controllerClass' => get_class($this),
-            'controllerFile' => $reflectionClass->getFileName(),
-            'programRootPath' => $this->_getProgramRootPath(),
-            // TODO: Only send the files hash upon request
-            'programFilesMTimeHash' => $this->_getProgramFilesMTimeHash(),
-            'forceReload' => $this->forceReload,
-            'container' => $this->containerName,
-            'alias' => $this->alias,
-            'options' => $this->getOptions()
-        );
+        $plugins = $this->getPluginPaths();
+        foreach( $plugins as $containerName => $path ) {
+            // NOTE: Ignoring $containerName for now - plugin will get name from basename($path)
+            $plugin = new Insight_Program_JavaScript_Plugin($this, $path);
+            $info = $plugin->getInsightRegistrationMessage();
+            // augment plugin info with info about controlling class
+            $info['controllerClass'] = get_class($this);
+            $info['controllerFile'] = $reflectionClass->getFileName();
+            $info['forceReload'] = $this->getForceReload();
+            $info['alias'] = $this->getAlias();
+            $info['options'] = $this->getOptions();
+            $plugins[$containerName] = $info;
+        }
+        return array_values($plugins);
     }
 
-    protected function _getProgramRootPath() {
-        $file = $this->getProgramRootPath();
-        if(!is_dir($file) || !is_readable($file)) {
-            throw new Exception('Program root path "' . $file . '" does not exist or is not readable.');
-        }
-        // Ensure program is declared in a directory we have access to
-        if(!Insight_Helper::getInstance()->getServer()->canServeFile($file)) {
-            throw new Exception('Program "' . $file . '" cannot be access remotely. You need to configure acces with ["implements"]["cadorn.org/insight/@meta/config/0"]["paths"].');
-        }
-        $descriptorFile = $file . '/package.json';
-        if(!is_file($descriptorFile) || !is_readable($descriptorFile)) {
-            throw new Exception('Package descriptor for program not accessbile: ' . $descriptorFile);
-        }
-        $descriptor = json_decode(file_get_contents($descriptorFile), true);
-        if(!json_decode(file_get_contents($descriptorFile))) {
-            throw new Exception('Package descriptor for program not valid JSON: ' . $descriptorFile);
-        }
-        if(!isset($descriptor['mappings'])) {
-            throw new Exception('Package descriptor must declare "mappings": ' . $descriptorFile);
-        }
-        if(!isset($descriptor['implements'])) {
-            throw new Exception('Package descriptor must declare "implements": ' . $descriptorFile);
-        }
-        if(!isset($descriptor['implements']['cadorn.org/insight/@meta/plugin/0'])) {
-            throw new Exception('Package descriptor must declare "implements" -> "cadorn.org/insight/@meta/plugin/0": ' . $descriptorFile);
-        }
-        if(!isset($descriptor['implements']['cadorn.org/insight/@meta/plugin/0']['main'])) {
-            $descriptor['implements']['cadorn.org/insight/@meta/plugin/0']['main'] = 'main';
-        }
-        return $file;
-    }
-
-    public function getProgramRootPath() {
+    public function getPluginPaths() {
         $reflectionClass = new ReflectionClass(get_class($this));
-        $file = dirname($reflectionClass->getFileName()) . DIRECTORY_SEPARATOR . 'packages' . DIRECTORY_SEPARATOR . $this->containerName;
-        if(!file_exists($file)) {
-            $file = dirname(dirname($reflectionClass->getFileName())) . DIRECTORY_SEPARATOR . 'packages' . DIRECTORY_SEPARATOR . $this->containerName;
+        $file = dirname($reflectionClass->getFileName()) . DIRECTORY_SEPARATOR . 'packages';
+        if(!is_dir($file)) {
+            $file = dirname(dirname($reflectionClass->getFileName())) . DIRECTORY_SEPARATOR . 'packages';
         }
-        return $file;
-    }
-    
-    protected function _getProgramFilesMTimeHash() {
-        $dir = $this->_getProgramRootPath();
-        $stats = array();
-        foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir)) as $path ) {
-            if($path->isFile()) {
-                if(substr($path->getBasename(), 0, 1) != '.') {
-                    $stats[] = $path->getMTime();
-                }
-            }
+        if(!is_dir($file)) {
+            throw new Exception("No plugins found in 'packages/' relative to: " . $reflectionClass->getFileName());
         }
-        if($this->forceReload) {
-            $stats[] = microtime(true);
+        $plugins = array();
+        foreach( new DirectoryIterator($file) as $dir ) {
+            if(!$dir->isDot() && $dir->isDir())
+            $plugins[$dir->getBasename()] = $dir->getPathname();
         }
-        return md5(implode(':', $stats));
+        return $plugins;
     }
 
-    public function getWrappedProgram() {
-        $rootPath = $this->getProgramRootPath();
-
-        $payloadDelimiter = '[|:NEXT-SECTION:|]';
-
-        $payload = array();
-        $header = array(
-            'sections' => array(
-                'descriptor' => array(),
-                'modules' => array(),
-                'css' => array(),
-                'images' => array()
-            )
-        );
-
-        // add package.json for program
-        $section = file_get_contents($rootPath . DIRECTORY_SEPARATOR . 'package.json');
-        $payload[] = $section;
-        $header['sections']['descriptor'][$this->containerName] = strlen($section);
-
-        // wrap all JS modules
-        // TODO: Parse for require() in modules to only include used modules
-        // TODO: Determine lib dir based on package.json
-        $libRootPath = $rootPath . DIRECTORY_SEPARATOR . 'lib';
-        $section = false;
-        foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($libRootPath)) as $path ) {
-            if($path->isFile() && substr($path->getBasename(),-3,3)=='.js') {
-                $moduleId = $this->containerName . '/' . str_replace(array('\\\\', '\\'), '/', substr($path->getPathname(), strlen($libRootPath)+1, -3));
-                $payload[] = $section = file_get_contents($path->getPathname());
-                $header['sections']['modules'][$moduleId] = strlen($section);
-            }
+    public function getWrappedProgram($containerName) {
+        $plugins = $this->getPluginPaths();
+        if(!isset($plugins[$containerName])) {
+            throw new Exception('$containerName "' . $containerName . '" not found.');
         }
-
-        // add css files if found
-        $cssRootPath = $rootPath . DIRECTORY_SEPARATOR . 'resources';
-        if(is_dir($cssRootPath)) {
-            $section = false;
-            foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($cssRootPath)) as $path ) {
-                if($path->isFile() && substr($path->getBasename(),-4,4)=='.css') {
-                    $cssPath = str_replace(array('\\\\', '\\'), '/', substr($path->getPathname(), strlen($cssRootPath)+1));
-                    $payload[] = $section = file_get_contents($path->getPathname());
-                    $header['sections']['css'][$cssPath] = strlen($section);
-                }
-            }
-        }
-
-        // add image files if found
-        $imagesRootPath = $rootPath . DIRECTORY_SEPARATOR . 'resources';
-        if(is_dir($imagesRootPath)) {
-            $section = false;
-            foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($imagesRootPath)) as $path ) {
-                if($path->isFile() && substr($path->getBasename(),-4,4)=='.png') {
-                    $imagePath = str_replace(array('\\\\', '\\'), '/', substr($path->getPathname(), strlen($imagesRootPath)+1));
-                    $payload[] = $section = base64_encode(file_get_contents($path->getPathname()));
-                    $header['sections']['images'][$imagePath] = strlen($section);
-                }
-            }
-        }
-        
-        return json_encode($header) . $payloadDelimiter . implode($payloadDelimiter, $payload);
+        $plugin = new Insight_Program_JavaScript_Plugin($this, $plugins[$containerName]);
+        return $plugin->getWrappedProgram();
     }
 
     public function sendSimpleMessage($message) {
