@@ -53,6 +53,10 @@ class Insight_Config
                         "request" => array(
                             "implements" => "http://registry.pinf.org/cadorn.org/insight/@meta/receiver/console/request/0",
                             "api" => "Insight/Plugin/Request"
+                        ),
+                        "process" => array(
+                            "implements" => "http://registry.pinf.org/cadorn.org/insight/@meta/receiver/console/process/0",
+                            "api" => "Insight/Plugin/Process"
                         )
                     ),
                     "renderers" => array(

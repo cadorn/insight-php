@@ -89,7 +89,9 @@ class Insight_Helper
                 }
 
                 // enable output buffering to disable flush() calls in code
-                ob_start();
+                if(php_sapi_name()!='cli') {
+                    ob_start();
+                }
 
                 // always enable insight for now
                 self::$instance->setEnabled(true);
@@ -98,11 +100,15 @@ class Insight_Helper
                 register_shutdown_function('Insight_Helper__shutdown');
 
                 // set transport
-                require_once('Insight/Transport.php');
-                $transport = new Insight_Transport();
-                $transport->setConfig($config);
-                self::$instance->getChannel()->setTransport($transport);
-    
+                // NOTE: If running as CLI we don't need to keep data in file
+                $transport = false;
+                if(php_sapi_name()!='cli') {
+                    require_once('Insight/Transport.php');
+                    $transport = new Insight_Transport();
+                    $transport->setConfig($config);
+                    self::$instance->getChannel()->setTransport($transport);
+                }
+
                 // initialize server
                 require_once('Insight/Server.php');
                 self::$instance->server = new Insight_Server();
@@ -110,10 +116,12 @@ class Insight_Helper
                 self::$instance->server->setConfig($config);
     
                 // NOTE: This may stop script execution if a transport data request is detected
-                $transport->setServer(self::$instance->server);
-                if($transport->listen()===true) {
-                    self::$swallowDebugMessages = true;
-                    exit;
+                if($transport) {
+                    $transport->setServer(self::$instance->server);
+                    if($transport->listen()===true) {
+                        self::$swallowDebugMessages = true;
+                        exit;
+                    }
                 }
 
                 // NOTE: This may stop script execution if a server request is detected
@@ -197,8 +205,13 @@ class Insight_Helper
 
     public function getChannel() {
         if(!$this->channel) {
-            require_once('Wildfire/Channel/HttpHeader.php');
-            $this->channel = new Wildfire_Channel_HttpHeader();
+            if(php_sapi_name()=='cli') {
+                require_once('Wildfire/Channel/HttpClient.php');
+                $this->channel = new Wildfire_Channel_HttpClient('localhost', 8099);
+            } else {
+                require_once('Wildfire/Channel/HttpHeader.php');
+                $this->channel = new Wildfire_Channel_HttpHeader();
+            }
         }
         return $this->channel;
     }
@@ -340,6 +353,10 @@ class Insight_Helper
 
     protected function isClientAuthorized() {
 
+        if(php_sapi_name()=='cli') {
+            return true;
+        }
+
         // verify IP
         $authorized = false;
         $ips = $this->config->getIPs();
@@ -391,6 +408,11 @@ class Insight_Helper
     }
 
     public function getClientInfo() {
+
+        if(php_sapi_name()=='cli') {
+            return false;
+        }
+
         static $_cached_info = false;
         if($_cached_info!==false) {
             return $_cached_info;
@@ -525,6 +547,33 @@ function Insight_Helper__main() {
             trigger_error('INSIGHT_SERVER_PATH constant ignored as INSIGHT_CONFIG_PATH is defined', E_USER_WARNING);
         }
         Insight_Helper::init($insightConfigPath, $additionalConfig, $options);
+    } else
+    if(!$insightConfigPath && php_sapi_name()=='cli') {
+        $paths = array();
+        if(defined('INSIGHT_PATHS')) {
+            foreach(explode(',', constant('INSIGHT_PATHS')) as $path) {
+                $paths[$path] = 'allow';
+            }
+        }
+        $config = array(
+            'package.json' => array(
+                'uid' => 'localhost',
+                'implements' => array(
+                    'cadorn.org/insight/@meta/config/0' => array(
+                        'paths' => $paths
+                    )
+                )
+            ),
+            'credentials.json' => array(
+                'cadorn.org/insight/@meta/config/0' => array(
+                    'allow' => array(
+                        'ips' => array('*'),
+                        'authkeys' => array('*')
+                    )
+                )
+            )
+        );
+        Insight_Helper::init($config, $additionalConfig, $options);
     } else
     if(defined('INSIGHT_IPS') || defined('INSIGHT_AUTHKEYS') || defined('INSIGHT_PATHS') || defined('INSIGHT_SERVER_PATH')) {
         if(!defined('INSIGHT_IPS') || !defined('INSIGHT_AUTHKEYS') || !defined('INSIGHT_PATHS') || !defined('INSIGHT_SERVER_PATH')) {
