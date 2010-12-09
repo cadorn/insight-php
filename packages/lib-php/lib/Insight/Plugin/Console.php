@@ -39,36 +39,67 @@ class Insight_Plugin_Console extends Insight_Plugin_API {
     }
 
     public function log($data) {
-        $this->message->meta($this->_addFileLineMeta(array(
+        $meta = array(
             'priority' => 'log'
-        )))->send($data);
+        );
+        if(isset($this->message->meta['.expand'])) {
+            $meta['expand'] = true;
+        }
+        $this->message->meta($this->_addFileLineMeta($meta, $data))->send($data);
     }
 
     public function info($data) {
-        $this->message->meta($this->_addFileLineMeta(array(
+        $meta = array(
             'priority' => 'info'
-        )))->send($data);
+        );
+        if(isset($this->message->meta['.expand'])) {
+            $meta['expand'] = true;
+        }
+        $this->message->meta($this->_addFileLineMeta($meta, $data))->send($data);
     }
-    
+
     public function warn($data) {
-        $this->message->meta($this->_addFileLineMeta(array(
+        $meta = array(
             'priority' => 'warn'
-        )))->send($data);
+        );
+        if(isset($this->message->meta['.expand'])) {
+            $meta['expand'] = true;
+        }
+        $this->message->meta($this->_addFileLineMeta($meta, $data))->send($data);
     }
 
     public function error($data) {
-        $this->message->meta($this->_addFileLineMeta(array(
+        $meta = array(
             'priority' => 'error'
-        ), $data))->send($data);
+        );
+        if(isset($this->message->meta['.expand'])) {
+            $meta['expand'] = true;
+        }
+        $this->message->meta($this->_addFileLineMeta($meta, $data))->send($data);
+    }
+
+    public function expand() {
+        return $this->message->meta(array(
+            '.expand' => true
+        ));
     }
 
     public function group($name=null, $title=null) {
+        if(!preg_match_all('/^[A-Za-z0-9_\\-\\.\\/]*$/', $name, $m)) {
+            throw new Exception("Invalid group name '" . $name . "'. May only contain [A-Za-z0-9_-./]");
+        }
         if(!$name) {
             $name = md5(uniqid() . microtime(true) . (self::$groupIndex++));
         }
         $meta = array(
             'group' => $name
         );
+        if(isset($this->message->meta['.expand'])) {
+            // NOTE: The group name is used instead of a flag as it may be logged multiple times and should only
+            //       apply to this group. This is kind of a hack but no way around it for now.
+            $meta['group.expand'] = $name;
+            unset($this->message->meta['.expand']);
+        }
         if(isset($this->message->meta['group'])) {
             $meta['group.parent'] = $this->message->meta['group'];
         }
@@ -101,12 +132,16 @@ class Insight_Plugin_Console extends Insight_Plugin_API {
         if(isset($this->message->meta['encoder.trace.maxLength'])) {
             $trace = array_splice($trace, 0, $this->message->meta['encoder.trace.maxLength']);
         }
-        $this->message->meta($this->_addFileLineMeta(array(
+        $meta = array(
             'file' => $trace[0]['file'],
             'line' => $trace[0]['line'],
             'renderer' => 'insight:structures/trace',
             'encoder.depthExtend' => 5
-        )))->send(array(
+        );
+        if(isset($this->message->meta['.expand'])) {
+            $meta['expand'] = true;
+        }
+        $this->message->meta($this->_addFileLineMeta($meta))->send(array(
             'title' => $title,
             'trace' => $trace
         ));
@@ -152,11 +187,14 @@ class Insight_Plugin_Console extends Insight_Plugin_API {
                 }
             }
         }
-        
-        $this->message->meta($this->_addFileLineMeta(array(
+        $meta = array(
             'renderer' => 'insight:structures/table',
             'encoder.depthExtend' => 2
-        )))->send(array(
+        );
+        if(isset($this->message->meta['.expand'])) {
+            $meta['expand'] = true;
+        }        
+        $this->message->meta($this->_addFileLineMeta($meta))->send(array(
             'title' => $title,
             'data' => $data,
             'header' => $header
@@ -172,6 +210,18 @@ class Insight_Plugin_Console extends Insight_Plugin_API {
             'encoder.depthNoLimit' => ($nolimit===true),
             'encoder.lengthNoLimit' => ($nolimit===true)
         ));
+    }
+
+    public function notrim($notrim=true) {
+        // NOTE: If trimming the option is removed to have client use defaults for pure and nested strings
+        //       To explicitly enable trimming of pure strings use option('trim.enabled', true)
+        $message = $this->message->meta(array(
+            'string.trim.enabled' => false
+        ));
+        if($notrim===false) {
+            unset($message->meta['string.trim.enabled']);
+        }
+        return $message;
     }
 
     public function option($name, $value=null) {
