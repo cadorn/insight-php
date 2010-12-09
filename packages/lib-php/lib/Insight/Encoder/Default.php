@@ -15,6 +15,7 @@ class Insight_Encoder_Default {
                                'maxArrayLength' => 25,
                                'maxObjectDepth' => 3,
                                'maxObjectLength' => 25,
+                               'maxStringLength' => 5000,
                                'depthExtend' => 0,
                                'exception.traceOffset' => 0,
                                'exception.traceMaxLength' => -1,
@@ -200,6 +201,14 @@ class Insight_Encoder_Default {
                 $var['text'] = $Variable;
             } else {
                 $var['text'] = utf8_encode($Variable);
+            }
+            $maxLength = $this->getOption('maxStringLength');
+            $lengthNoLimit = $this->getOption('lengthNoLimit');
+            if($maxLength>=0 && strlen($var['text'])>=$maxLength && $lengthNoLimit!==true) {
+                $var['encoder.trimmed'] = true;
+                $var['encoder.trimmed.partial'] = true;
+                $var['encoder.notice'] = 'Max String Length ('.$maxLength.') ' . (strlen($var['text'])-$maxLength) . ' more';
+                $var['text'] = substr($var['text'], 0, $maxLength);
             }
             if($this->getOption('includeLanguageMeta')) {
                 $var['lang.type'] = 'string';
@@ -606,7 +615,8 @@ class Insight_Encoder_Default {
         }
 
         if($maxLengthReached) {
-            unset($return['dictionary'][array_pop(array_keys($return['dictionary']))]);
+            $keys = array_keys($return['dictionary']);
+            unset($return['dictionary'][array_pop($keys)]);
             $return['dictionary']['...'] = array(
               'encoder.trimmed' => true,
               'encoder.notice' => 'Max Object Length ('.$maxLength.') ' . (count($members)-$maxLength) . ' more'
