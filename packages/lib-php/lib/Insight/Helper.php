@@ -62,12 +62,12 @@ class Insight_Helper
             self::$instance->forceEnabled = (isset($options['forceEnable']) && $options['forceEnable']===true)?true:false;
 
             if(self::$instance->authorized || self::$instance->forceEnabled) {
-                
+
                 // set a dummy channel if not authorized
                 // this will prevent all data from being sent while keeping all channel logic and listeners working
                 if(self::$instance->authorized!==true) {
-                    require_once('Wildfire/Channel/Dummy.php');
-                    self::$instance->channel = new Wildfire_Channel_Dummy();
+                    require_once('Wildfire/Channel/Memory.php');
+                    self::$instance->channel = new Wildfire_Channel_Memory();
                 }
 
                 // ensure cache path works
