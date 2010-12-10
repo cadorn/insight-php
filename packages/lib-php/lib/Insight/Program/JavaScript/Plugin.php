@@ -14,6 +14,7 @@ class Insight_Program_JavaScript_Plugin {
         if($containerName===false) {
             $this->containerName = basename($rootPath);
         }
+        $this->validate();
     }
 
     protected function validate() {
