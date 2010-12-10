@@ -318,6 +318,10 @@ class Insight_Helper
 
         return $message;
     }
+    
+    public function getApis() {
+        return $this->apis;
+    }
 
     public function getApi($class) {
         if(!isset($this->apis[$class])) {
@@ -498,6 +502,14 @@ function Insight_Helper__shutdown() {
     // if disabled do not flush headers
     if(!$insight->getEnabled()) {
         return;
+    }
+    
+    // call shutdown for all APIs
+    $apis = $insight->getApis();
+    if($apis) {
+        foreach( $apis as $name => $obj ) {
+            $obj->_shutdown();
+        }
     }
 
     Insight_Helper::debug('Flushing headers');

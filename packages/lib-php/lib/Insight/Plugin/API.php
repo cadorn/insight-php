@@ -18,6 +18,10 @@ class Insight_Plugin_API {
         return $oldmsg;
     }
     
+    public function getMessage() {
+        return $this->message;
+    }
+    
     public function setTemporaryTraceOffset($offset) {
         $this->temporaryTraceOffset = $offset;
     }
@@ -60,5 +64,12 @@ class Insight_Plugin_API {
             }
         }
         return $meta;
+    }
+
+    public function _shutdown() {
+        $this->onShutdown();
+    }
+
+    protected function onShutdown() {
     }
 }
