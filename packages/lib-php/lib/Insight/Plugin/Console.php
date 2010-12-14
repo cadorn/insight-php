@@ -121,8 +121,10 @@ class Insight_Plugin_Console extends Insight_Plugin_API {
         return $group;
     }
 
-    public function trace($title) {
-        $trace = debug_backtrace();
+    public function trace($title, $trace=null) {
+        if(is_null($trace)) {
+            $trace = debug_backtrace();
+        }
         if(!$trace) return false;
         $offset = $this->traceOffset;
         if(isset($this->message->meta['encoder.trace.offsetAdjustment'])) {
