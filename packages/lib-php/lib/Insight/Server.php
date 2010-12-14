@@ -92,25 +92,26 @@ class Insight_Server
     }
 
     public function listen() {
-/*
-        $path = $this->getPath();
 
-        if(substr($_SERVER['REQUEST_URI'], 0, strlen($path))!=$path) {
-            // Not an insight server request
-            return;
-        }
-*/
-        // TODO: Use wildfire headers to check for server request in future?
-        if(Insight_Util::getRequestHeader('x-insight')!='serve') {
+        if(Insight_Util::getRequestHeader('x-insight')=='serve' ||
+          (isset($_GET['x-insight']) && $_GET['x-insight']=='serve')) {
+            // we can respond
+        } else {
             return false;
         }
 
 //        try {
-            $payload = $_POST['payload'];
-            if(get_magic_quotes_gpc()) {
-                $payload = stripslashes($payload);
+            $response = false;
+            if(isset($_POST['payload'])) {
+                $payload = $_POST['payload'];
+                if(get_magic_quotes_gpc()) {
+                    $payload = stripslashes($payload);
+                }
+                $response = $this->respond(Insight_Util::json_decode($payload));
+            } else
+            if(sizeof($_GET)>0) {
+                // TODO: Implement fetching via GET
             }
-            $response = $this->respond(Insight_Util::json_decode($payload));
 
             if(!$response) {
                 header("HTTP/1.0 204 No Content");

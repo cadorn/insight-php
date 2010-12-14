@@ -106,6 +106,37 @@ class Insight_Plugin_Plugin extends Insight_Plugin_API {
 
     public function respond($server, $request) {
 
+        if($request->getAction()=='GetFile') {
+            $args = $request->getArguments();
+            $program = $this->loadProgram($args['controllerClass'], $args['controllerFile']);
+            $plugin = $program->getPlugin($args['container']);
+            $file = $plugin->getResourcePath($args['path']);
+            if(!$file) {
+                return array(
+                    'type' => 'error',
+                    'status' => '404'
+                );
+            } else {
+                $extensions = array(
+                    'js' => 'application/javascript',
+                    'png' => 'image/png',
+                    'gif' => 'image/gif',
+                    'css' => 'text/css'
+                );
+                $parts = explode('.', $file);
+                $ext = array_pop($parts);
+                if(!isset($extensions[$ext])) {
+                    return array(
+                        'type' => 'error',
+                        'status' => '403'
+                    );
+                }
+                return array(
+                    'type' => $extensions[$ext],
+                    'data' => base64_encode(file_get_contents($file))
+                );
+            }
+        } else
         if($request->getAction()=='GetProgram') {
 
             $args = $request->getArguments();

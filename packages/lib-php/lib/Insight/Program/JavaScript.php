@@ -63,6 +63,14 @@ abstract class Insight_Program_JavaScript {
         return $plugins;
     }
 
+    public function getPlugin($containerName) {
+        $plugins = $this->getPluginPaths();
+        if(!isset($plugins[$containerName])) {
+            throw new Exception('Plugin for $containerName "' . $containerName . '" not found.');
+        }
+        return new Insight_Program_JavaScript_Plugin($this, $plugins[$containerName]);
+    }
+
     public function getWrappedProgram($containerName) {
         $plugins = $this->getPluginPaths();
         if(!isset($plugins[$containerName])) {
