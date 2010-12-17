@@ -367,8 +367,9 @@ class Insight_Helper
         if(count($ips)==1 && $ips[0]=='*') {
             $authorized = true;
         } else {
+            $requestIP = Insight_Util::getRequestIP();
             foreach( $ips as $ip ) {
-                if(substr($_SERVER['REMOTE_ADDR'], 0, strlen($ip))==$ip) {
+                if(substr($requestIP, 0, strlen($ip))==$ip) {
                     $authorized = true;
                     break;
                 }

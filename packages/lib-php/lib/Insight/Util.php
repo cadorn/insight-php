@@ -170,6 +170,16 @@ class Insight_Util {
         return $id;
     }
 
+    public static function getRequestIP() {
+        if(isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            return $_SERVER['HTTP_X_FORWARDED_FOR'];
+        }
+        if(isset($_SERVER['REMOTE_ADDR'])) {
+            return $_SERVER['REMOTE_ADDR'];
+        }
+        return false;
+    }
+
     public static function json_encode($var) {
         if(function_exists('json_encode')) {
             return json_encode($var);
