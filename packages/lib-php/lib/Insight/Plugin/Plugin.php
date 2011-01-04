@@ -185,7 +185,7 @@ class Insight_Plugin_Plugin extends Insight_Plugin_API {
 
     protected function loadProgram($class, $file=null) {
 
-        if(!class_exists($class)) {
+        if(!class_exists($class, false)) {
             if(!$file) {
                 // assuming $class is accessible via autoloader
                 new $class();
@@ -196,7 +196,7 @@ class Insight_Plugin_Plugin extends Insight_Plugin_API {
                 if(!require_once($file)) {
                     throw new Exception('Error while requiring file: ' . $file);
                 }
-                if(!class_exists($class)) {
+                if(!class_exists($class, false)) {
                     throw new Exception('Class "' . $class . '" not declared in file: ' . $file);
                 }
             }

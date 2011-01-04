@@ -157,7 +157,7 @@ class Insight_Server
         if(!isset($this->plugins[$target])) {
             $file = str_replace('_', '/', $target) . '.php';
             require_once($file);
-            if(!class_exists($target)) {
+            if(!class_exists($target, false)) {
                 throw new Exception('Class ' . $target . ' not defined in: ' . $file);
             }
             $this->plugins[$target] = new $target();

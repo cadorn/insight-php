@@ -496,7 +496,7 @@ function Insight_Helper__shutdown() {
     $insight = Insight_Helper::getInstance();
 
     // only send headers if this was not a transport request
-    if(class_exists('Insight_Server') && Insight_Util::getRequestHeader('x-insight')=="transport") {
+    if(class_exists('Insight_Server', false) && Insight_Util::getRequestHeader('x-insight')=="transport") {
         return;
     }
 
