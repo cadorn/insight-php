@@ -48,6 +48,11 @@ class Insight_Helper
                 throw new Exception('PHP version 5.1+ required. Your version: ' . phpversion());
             }
 
+            // environment cleanup
+            unset($GLOBALS['INSIGHT_AUTOLOAD']);
+            unset($GLOBALS['INSIGHT_ADDITIONAL_CONFIG']);
+            unset($GLOBALS['INSIGHT_FORCE_ENABLE']);
+
             $config = new Insight_Config();
             if(is_array($configPath)) {
                 $config->loadFromArray($configPath, $additionalConfig);
