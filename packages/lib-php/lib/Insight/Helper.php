@@ -547,6 +547,20 @@ function Insight_Helper__main() {
     if(defined('INSIGHT_CONFIG_PATH')) {
         $insightConfigPath = constant('INSIGHT_CONFIG_PATH');
     }
+    $insightConfigPath = explode(':', $insightConfigPath);
+    if(sizeof($insightConfigPath)==2) {
+        $additionalConfig = Insight_Util::array_merge(
+            ($additionalConfig)?$additionalConfig:array(),
+            array(
+                'implements' => array(
+                    'cadorn.org/insight/@meta/config/0' => array(
+                        'credentialsPath' => $insightConfigPath[1]
+                    )
+                )
+            )
+        );
+    }
+    $insightConfigPath = $insightConfigPath[0];
     $options = array();
     if(isset($GLOBALS['INSIGHT_FORCE_ENABLE'])) {
         $options['forceEnable'] = ($GLOBALS['INSIGHT_FORCE_ENABLE']===true)?true:false;
