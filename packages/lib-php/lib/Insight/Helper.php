@@ -547,7 +547,7 @@ function Insight_Helper__main() {
     if(defined('INSIGHT_CONFIG_PATH')) {
         $insightConfigPath = constant('INSIGHT_CONFIG_PATH');
     }
-    $insightConfigPath = explode(':', $insightConfigPath);
+    $insightConfigPath = explode(',', $insightConfigPath);
     if(sizeof($insightConfigPath)==2) {
         $additionalConfig = Insight_Util::array_merge(
             ($additionalConfig)?$additionalConfig:array(),
