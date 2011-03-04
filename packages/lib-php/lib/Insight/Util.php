@@ -94,7 +94,7 @@ class Insight_Util {
      */
     public static function is_utf8($str) {
         if(function_exists('mb_detect_encoding')) {
-            return (mb_detect_encoding($str) == 'UTF-8');
+            return (mb_detect_encoding($str, 'UTF-8', true) == 'UTF-8');
         }
         $c=0; $b=0;
         $bits=0;

@@ -351,6 +351,9 @@ class Insight_Encoder_Default {
           }
 
           if($this->getOption('treatArrayMapAsDictionary')) {
+              if(!Insight_Util::is_utf8($key)) {
+                  $key = utf8_encode($key);
+              }
               $return[$key] = $this->_encodeVariable($val, 1, $ArrayDepth + 1);
           } else {
               $return[] = array($this->_encodeVariable($key), $this->_encodeVariable($val, 1, $ArrayDepth + 1, $MaxDepth + 1));
