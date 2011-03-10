@@ -380,7 +380,10 @@ class Insight_Helper
                 }
             }
         }
-        if(!$authorized) return false;
+        if(!$authorized) {
+            Insight_Helper::debug('IP "' . Insight_Util::getRequestIP() . '" not authorized in credentials.json file or INSIGHT_IPS constant');
+            return false;
+        }
 
         $clientInfo = self::$instance->getClientInfo();
         if(!$clientInfo || $clientInfo['client']!='insight') {
@@ -547,6 +550,10 @@ function Insight_Helper__main() {
     if(defined('INSIGHT_CONFIG_PATH')) {
         $insightConfigPath = constant('INSIGHT_CONFIG_PATH');
     }
+    if(!$insightConfigPath) {
+        Insight_Helper::debug('INSIGHT_CONFIG_PATH constant or environment variable not set!');
+        return false;
+    }
     $insightConfigPath = explode(',', $insightConfigPath);
     if(sizeof($insightConfigPath)==2) {
         $additionalConfig = Insight_Util::array_merge(
@@ -567,15 +574,19 @@ function Insight_Helper__main() {
     }
     if($insightConfigPath) {
         if(defined('INSIGHT_IPS')) {
+            Insight_Helper::debug('INSIGHT_IPS constant ignored as INSIGHT_CONFIG_PATH is defined');
             trigger_error('INSIGHT_IPS constant ignored as INSIGHT_CONFIG_PATH is defined', E_USER_WARNING);
         }
         if(defined('INSIGHT_AUTHKEYS')) {
+            Insight_Helper::debug('INSIGHT_AUTHKEYS constant ignored as INSIGHT_CONFIG_PATH is defined');
             trigger_error('INSIGHT_AUTHKEYS constant ignored as INSIGHT_CONFIG_PATH is defined', E_USER_WARNING);
         }
         if(defined('INSIGHT_PATHS')) {
+            Insight_Helper::debug('INSIGHT_PATHS constant ignored as INSIGHT_CONFIG_PATH is defined');
             trigger_error('INSIGHT_PATHS constant ignored as INSIGHT_CONFIG_PATH is defined', E_USER_WARNING);
         }
         if(defined('INSIGHT_SERVER_PATH')) {
+            Insight_Helper::debug('INSIGHT_SERVER_PATH constant ignored as INSIGHT_CONFIG_PATH is defined');
             trigger_error('INSIGHT_SERVER_PATH constant ignored as INSIGHT_CONFIG_PATH is defined', E_USER_WARNING);
         }
         Insight_Helper::init($insightConfigPath, $additionalConfig, $options);
@@ -609,7 +620,8 @@ function Insight_Helper__main() {
     } else
     if(defined('INSIGHT_IPS') || defined('INSIGHT_AUTHKEYS') || defined('INSIGHT_PATHS') || defined('INSIGHT_SERVER_PATH')) {
         if(!defined('INSIGHT_IPS') || !defined('INSIGHT_AUTHKEYS') || !defined('INSIGHT_PATHS') || !defined('INSIGHT_SERVER_PATH')) {
-            throw new Exception('INSIGHT_IPS, INSIGHT_AUTHKEYS, INSIGHT_PATHS and INSIGHT_SERVER_PATH constants must be defined if not using INSIGHT_CONFIG_PATH');
+           Insight_Helper::debug('INSIGHT_IPS, INSIGHT_AUTHKEYS, INSIGHT_PATHS and INSIGHT_SERVER_PATH constants must be defined if not using INSIGHT_CONFIG_PATH');
+           throw new Exception('INSIGHT_IPS, INSIGHT_AUTHKEYS, INSIGHT_PATHS and INSIGHT_SERVER_PATH constants must be defined if not using INSIGHT_CONFIG_PATH');
         }
         $paths = array();
         foreach(explode(',', constant('INSIGHT_PATHS')) as $path) {
