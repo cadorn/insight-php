@@ -138,7 +138,7 @@ class Insight_Plugin_Console extends Insight_Plugin_API {
             'file' => $trace[0]['file'],
             'line' => $trace[0]['line'],
             'renderer' => 'insight:structures/trace',
-            'encoder.depthExtend' => 5
+            'encoder.rootDepth' => 5
         );
         if(isset($this->message->meta['.expand'])) {
             $meta['expand'] = true;
@@ -191,7 +191,7 @@ class Insight_Plugin_Console extends Insight_Plugin_API {
         }
         $meta = array(
             'renderer' => 'insight:structures/table',
-            'encoder.depthExtend' => 2
+            'encoder.rootDepth' => 4
         );
         if(isset($this->message->meta['.expand'])) {
             $meta['expand'] = true;

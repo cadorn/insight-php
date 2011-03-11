@@ -16,7 +16,7 @@ class Insight_Encoder_Default {
                                'maxObjectDepth' => 3,
                                'maxObjectLength' => 25,
                                'maxStringLength' => 5000,
-                               'depthExtend' => 0,
+                               'rootDepth' => 0,
                                'exception.traceOffset' => 0,
                                'exception.traceMaxLength' => -1,
                                'trace.maxLength' => -1,
@@ -110,13 +110,14 @@ class Insight_Encoder_Default {
         }
 
         // remove encoder options
+        $meta = array();
         foreach( $this->_meta as $name => $value ) {
-            if($name=="encoder" || substr($name, 0, 8)=="encoder.") {
-                unset($this->_meta[$name]);
+            if(!($name=="encoder" || substr($name, 0, 8)=="encoder.")) {
+                $meta[$name] = $value;
             }
         }
 
-        return array(Insight_Util::json_encode($graph), ($this->_meta)?$this->_meta:false);
+        return array(Insight_Util::json_encode($graph), ($meta)?$meta:false);
     }
 
 
@@ -268,10 +269,18 @@ class Insight_Encoder_Default {
             return false;
         }
 
-        $depthExtend = $this->getOption('depthExtend');
+        $rootDepth = $this->getOption('rootDepth');
 
-        $MaxDepth -= $depthExtend;
-        $TypeDepth -= $depthExtend;
+        // If we are traversing to $rootDepth we ignore or adjust max and type depth
+        if($rootDepth>0) {
+            if($MaxDepth == $TypeDepth) {
+                if($MaxDepth <= $rootDepth) {
+                    return false;
+                }
+                $TypeDepth -= $rootDepth;
+            }
+            $MaxDepth -= $rootDepth;
+        }
 
         $maxDepthOption = $this->getOption('maxDepth');
         // NOTE: Not sure why >= is needed here (shout just be > as below but then it does not match up)
@@ -284,6 +293,7 @@ class Insight_Encoder_Default {
                 )
             );
         }
+
         $maxDepthOption = $this->getOption('max' . $Type . 'Depth');
         if ($maxDepthOption>=0 && $TypeDepth > $maxDepthOption) {
             return array(
