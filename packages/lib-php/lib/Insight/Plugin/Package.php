@@ -29,4 +29,19 @@ class Insight_Plugin_Package extends Insight_Plugin_API {
         ))->send($this->info);
     }
 
+
+    public function respond($server, $request) {
+
+        if($request->getAction()=='GetInfo') {            
+            if($packageInfo = $server->getConfig()->getPackageInfo()) {
+                return array(
+                    'type' => 'json',
+                    'data' => $packageInfo
+                );
+            } else {
+                return "";
+            }
+        }
+        return false;
+    }
 }
