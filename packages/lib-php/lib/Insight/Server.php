@@ -81,7 +81,8 @@ class Insight_Server
                 }
                 $path = implode("/", $pathParts) . '/' . substr($path, 2);
             }
-            $url[] = $path;
+
+            $url[] = preg_replace('/\/{2}/', '/', $path);
         }
         return implode('', $url);
     }
@@ -107,7 +108,14 @@ class Insight_Server
                 if(get_magic_quotes_gpc()) {
                     $payload = stripslashes($payload);
                 }
-                $response = $this->respond(Insight_Util::json_decode($payload));
+                try {
+                    $response = $this->respond(Insight_Util::json_decode($payload));
+                } catch(Exception $e) {
+                    $response = array(
+                        'type' => 'error',
+                        'status' => 500
+                    );
+                }
             } else
             if(sizeof($_GET)>0) {
                 // TODO: Implement fetching via GET
@@ -116,6 +124,9 @@ class Insight_Server
             if(!$response) {
                 header("HTTP/1.0 204 No Content");
                 header("Status: 204 No Content");
+            } else
+            if (is_string($response)) {
+                echo $response;
             } else {
                 switch($response['type']) {
                     case 'error':
