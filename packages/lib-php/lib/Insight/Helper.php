@@ -550,29 +550,26 @@ function Insight_Helper__main() {
     if(defined('INSIGHT_CONFIG_PATH')) {
         $insightConfigPath = constant('INSIGHT_CONFIG_PATH');
     }
-    if(!$insightConfigPath) {
-        Insight_Helper::debug('INSIGHT_CONFIG_PATH constant or environment variable not set!');
-        return false;
-    }
-    $insightConfigPath = explode(',', $insightConfigPath);
-    if(sizeof($insightConfigPath)==2) {
-        $additionalConfig = Insight_Util::array_merge(
-            ($additionalConfig)?$additionalConfig:array(),
-            array(
-                'implements' => array(
-                    'cadorn.org/insight/@meta/config/0' => array(
-                        'credentialsPath' => $insightConfigPath[1]
-                    )
-                )
-            )
-        );
-    }
-    $insightConfigPath = $insightConfigPath[0];
     $options = array();
     if(isset($GLOBALS['INSIGHT_FORCE_ENABLE'])) {
         $options['forceEnable'] = ($GLOBALS['INSIGHT_FORCE_ENABLE']===true)?true:false;
     }
     if($insightConfigPath) {
+        $insightConfigPath = explode(',', $insightConfigPath);
+        if(sizeof($insightConfigPath)==2) {
+            $additionalConfig = Insight_Util::array_merge(
+                ($additionalConfig)?$additionalConfig:array(),
+                array(
+                    'implements' => array(
+                        'cadorn.org/insight/@meta/config/0' => array(
+                            'credentialsPath' => $insightConfigPath[1]
+                        )
+                    )
+                )
+            );
+        }
+        $insightConfigPath = $insightConfigPath[0];
+
         if(defined('INSIGHT_IPS')) {
             Insight_Helper::debug('INSIGHT_IPS constant ignored as INSIGHT_CONFIG_PATH is defined');
             trigger_error('INSIGHT_IPS constant ignored as INSIGHT_CONFIG_PATH is defined', E_USER_WARNING);
@@ -649,7 +646,11 @@ function Insight_Helper__main() {
             )
         );
         Insight_Helper::init($config, $additionalConfig, $options);
+    } else {
+        Insight_Helper::debug('INSIGHT_CONFIG_PATH constant or environment variable or INSIGHT_IPS, INSIGHT_AUTHKEYS, INSIGHT_PATHS and INSIGHT_SERVER_PATH constants not set!');
+        return false;
     }
+
 }
 
 if(isset($GLOBALS['INSIGHT_AUTOLOAD'])?$GLOBALS['INSIGHT_AUTOLOAD']:true) {
