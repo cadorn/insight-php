@@ -10,7 +10,9 @@ class Insight_Plugin_Selective extends Insight_Plugin_API {
 
     protected function _loadFilters($skipAnnounce=false) {
         if($this->filters===null) {
-            $this->filters = $this->request->getFromCache('filters');
+            if ($this->request->isClientPresent()) {
+                $this->filters = $this->request->getFromCache('filters');
+            }
             if(!$this->filters) {
                 $this->filters = array();
             } else
@@ -39,8 +41,10 @@ class Insight_Plugin_Selective extends Insight_Plugin_API {
             if(isset($this->message->meta['target'])) {
                 $this->filters[$key]['target'] = $this->message->meta['target'];
             }
-            $this->request->storeInCache('filters', $this->filters);
-            Insight_Helper::to('selective')->announceFilters();
+            if ($this->request->isClientPresent()) {
+                $this->request->storeInCache('filters', $this->filters);
+                Insight_Helper::to('selective')->announceFilters();
+            }
         }
         return $this->filters[$key];
     }

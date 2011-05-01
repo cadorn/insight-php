@@ -19,6 +19,13 @@ class Insight_Request
     public function setClientKey($key) {
         $this->clientKey = $key;
     }
+    
+    public function isClientPresent() {
+        if($this->clientKey) {
+            return true;
+        }
+        return false;
+    }
 
     public function getClientKey() {
         if(!$this->clientKey) {
