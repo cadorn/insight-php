@@ -17,7 +17,8 @@ class Insight_Plugin_Controller extends Insight_Plugin_API {
             "action" => "inspectRequest"
         ));
     }
-    
+
+/*
     public function setServerUrl($url) {
         return $this->message->meta(array(
             "encoder" => "JSON"
@@ -25,6 +26,7 @@ class Insight_Plugin_Controller extends Insight_Plugin_API {
             "serverUrl" => $url
         ));
     }
+*/
 
     public function triggerClientTest($payload) {
         return $this->message->meta(array(

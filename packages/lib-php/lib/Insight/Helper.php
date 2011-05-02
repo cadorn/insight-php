@@ -150,7 +150,7 @@ class Insight_Helper
                 if($packageInfo = $config->getPackageInfo()) {
                     self::to('package')->setInfo($packageInfo);
                 }
-                self::to('controller')->setServerUrl(self::$instance->server->getUrl());
+//                self::to('controller')->setServerUrl(self::$instance->server->getUrl());
 
                 // Look for x-insight trigger
                 $insight = false;
