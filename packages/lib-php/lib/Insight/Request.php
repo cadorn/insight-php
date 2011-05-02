@@ -74,25 +74,67 @@ class Insight_Request
         }
         return $this->arguments[$name];
     }
-    
-    public function getFromCache($name)
+
+    /**
+     * Cache for client key
+     */
+    public function getFromClientCache($name, $decode=true)
     {
-        $file = $this->cachePathForName($name);
+        $file = $this->cachePathForName($name, 'client');
         if(!file_exists($file)) {
             return false;
         }
+        if (!$decode)
+            return file_get_contents($file);
         return Insight_Util::json_decode(file_get_contents($file));
     }
 
-    public function storeInCache($name, $object)
+    /**
+     * Cache for client key + url
+     */
+    public function getFromClientUrlCache($name, $decode=true)
     {
-        file_put_contents($this->cachePathForName($name), Insight_Util::json_encode($object));
+        $file = $this->cachePathForName($name, 'clienturl');
+        if(!file_exists($file)) {
+            return false;
+        }
+        if (!$decode)
+            return file_get_contents($file);
+        return Insight_Util::json_decode(file_get_contents($file));
+    }
+    /**
+     * @deprected
+     */
+    public function getFromCache($name, $decode=true)
+    {
+        return $this->getFromClientUrlCache($name, $decode);
     }
 
     /**
-     * Return a cache path for the given name in the context of the specific client connecting and the page URL
+     *Store in cache for client key
      */
-    public function cachePathForName($name)
+    public function storeInClientCache($name, $object, $encode=true)
+    {
+        file_put_contents($this->cachePathForName($name, 'client'), ($encode)?Insight_Util::json_encode($object):$object);
+    }
+
+    /**
+     * Store in cache for client key + url
+     */
+    public function storeInClientUrlCache($name, $object, $encode=true)
+    {
+        file_put_contents($this->cachePathForName($name, 'clienturl'), ($encode)?Insight_Util::json_encode($object):$object);
+    }
+
+    /**
+     * @deprected
+     */
+    public function storeInCache($name, $object, $encode=true)
+    {
+        return $this->storeInClientUrlCache($name, $object, $encode);
+    }
+
+    public function cachePathForName($name, $type)
     {
         $url = $this->getUrl();
         if(!$url) {
@@ -100,9 +142,16 @@ class Insight_Request
         }
         // TODO: This cache path should be unique to the request ID (NOT the client key + url)
         // TODO: Refactor depending logic to use Insight_Page instead of Insight_Request
-        $file = $this->config->getCachePath() . DIRECTORY_SEPARATOR .
-                '_request' . DIRECTORY_SEPARATOR .
-                md5('lkA022HSye2' . $this->getClientKey()) . '-' . md5($url);
+        if ($type=='clienturl') {
+            $file = $this->config->getCachePath() . DIRECTORY_SEPARATOR .
+                    '_request' . DIRECTORY_SEPARATOR .
+                    md5('lkA022HSye2' . $this->getClientKey()) . '-' . md5($url);
+        } else
+        if ($type=='client') {
+            $file = $this->config->getCachePath() . DIRECTORY_SEPARATOR .
+                    '_client' . DIRECTORY_SEPARATOR .
+                    md5('lkhs73HSye2' . $this->getClientKey());
+        }
         if(!file_exists($file)) {
             if(!mkdir($file, 0775, true)) {
                 throw new Exception('Error creating cache path at: ' . $file);
