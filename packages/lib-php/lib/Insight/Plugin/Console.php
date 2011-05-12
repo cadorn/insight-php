@@ -39,9 +39,7 @@ class Insight_Plugin_Console extends Insight_Plugin_API {
     }
 
     public function log($data) {
-        $meta = array(
-            'priority' => 'log'
-        );
+        $meta = array();
         if(isset($this->message->meta['.expand'])) {
             $meta['expand'] = true;
         }
