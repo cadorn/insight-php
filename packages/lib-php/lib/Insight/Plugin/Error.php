@@ -92,11 +92,9 @@ class Insight_Plugin_Error extends Insight_Plugin_API {
         }
         $this->errorHistory[$errno . ':' . $errstr . ':' . $errfile . ':' . $errline] = true;
 
-        // ignore assertion errors if being caught separately
+        // ignore assertion errors
         if(substr($errstr, 0, 8)=='assert()' && preg_match_all('/^assert\(\) \[<a href=\'function.assert\'>function.assert<\/a>\]: Assertion (.*) failed$/si', $errstr, $m)) {
-            if($this->assertionErrorConsole) {
-                return;
-            }
+            return;
         }
 
         // Only log errors we are asking for
