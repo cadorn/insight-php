@@ -20,33 +20,41 @@ class Insight_Plugin_Files extends Insight_Plugin_API {
         // exclude our own files
         $exclude = false;
         for ($i=0 ; $i<count($files) ; $i++) {
+            
+            // TODO: Make this more reliable
 
-            // start excluding when
-            if (preg_match("/\/FirePHP\/Init.php$/", $files[$i])) {
-                $exclude = true;
-            } else
-            // stop excluding after
-            if (preg_match("/\/Wildfire\/Protocol\/Component.php$/", $files[$i]) ||
-                preg_match("/\/Insight\/Encoder\/Default.php$/", $files[$i]) ||
-                preg_match("/\/Zend\/Reflection\/Class.php$/", $files[$i]) ||
-                preg_match("/\/Zend\/Reflection\/Property.php$/", $files[$i]) ||
-                preg_match("/\/Zend\/Reflection\/Method.php$/", $files[$i]) ||
-                preg_match("/\/Zend\/Reflection\/Docblock.php$/", $files[$i]) ||
-                preg_match("/\/Zend\/Reflection\/Docblock\/Tag.php$/", $files[$i]) ||
-                preg_match("/\/Zend\/Loader.php$/", $files[$i]) ||
-                preg_match("/\/Zend\/Reflection\/Parameter.php$/", $files[$i]))
+            if (preg_match("/\/FirePHP\//", $files[$i]) ||
+                preg_match("/\/FirePHPCore\//", $files[$i]) ||
+                preg_match("/\/Insight\//", $files[$i]) ||
+                preg_match("/\/Wildfire\//", $files[$i]) ||
+                preg_match("/\/Zend\//", $files[$i]))
             {
-                $exclude = false;
-                array_splice($files, $i, 1);
-                $i--;
-            }
-            if ($exclude)
-            {
-                array_splice($files, $i, 1);
-                $i--;
+                // potentially exclude
+
+                // start excluding when
+                if (preg_match("/\/FirePHP\/Init.php$/", $files[$i])) {
+                    $exclude = true;
+                } else
+                // stop excluding after
+                if (preg_match("/\/Zend\/Reflection\/Class.php$/", $files[$i]) ||
+                    preg_match("/\/Zend\/Reflection\/Property.php$/", $files[$i]) ||
+                    preg_match("/\/Zend\/Reflection\/Method.php$/", $files[$i]) ||
+                    preg_match("/\/Zend\/Reflection\/Docblock.php$/", $files[$i]) ||
+                    preg_match("/\/Zend\/Reflection\/Docblock\/Tag.php$/", $files[$i]) ||
+                    preg_match("/\/Zend\/Loader.php$/", $files[$i]) ||
+                    preg_match("/\/Zend\/Reflection\/Parameter.php$/", $files[$i]))
+                {
+                    $exclude = false;
+                    array_splice($files, $i, 1);
+                    $i--;
+                }
+                if ($exclude)
+                {
+                    array_splice($files, $i, 1);
+                    $i--;
+                }
             }
         }
-
         Insight_Helper::to('request')->files()->loaded($files);
     }
 }
