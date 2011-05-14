@@ -11,6 +11,14 @@ class Insight_Plugin_Request extends Insight_Plugin_API {
         ));
     }
 
+    public function files() {
+        return $this->message->api('Insight_Plugin_Files')->meta(array(
+            'context' => 'request'
+        ));
+    }
+
+
+
 /*
     public function timeline($name) {
         return $this->message->api(new Insight_Plugin_Timeline())->meta(array(

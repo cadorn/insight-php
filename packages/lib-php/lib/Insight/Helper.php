@@ -152,6 +152,20 @@ class Insight_Helper
                 }
 //                self::to('controller')->setServerUrl(self::$instance->server->getUrl());
 
+                // init some plugins so their shutdown callback will be called
+                self::to('request')->files();
+                
+                // setup error and assertion tracking
+                self::to('request')->getMessage()->api('Insight_Plugin_Assertion')->onAssertionError(
+                    FirePHP::to('page')->console('Assertions')
+                );
+                self::to('request')->getMessage()->api('Insight_Plugin_Error')->onError(
+                    FirePHP::to('page')->console('Errors')
+                );
+                self::to('request')->getMessage()->api('Insight_Plugin_Error')->onException(
+                    FirePHP::to('page')->console('Errors')
+                );
+
                 // Look for x-insight trigger
                 $insight = false;
                 if(isset($_GET['x-insight'])) {
