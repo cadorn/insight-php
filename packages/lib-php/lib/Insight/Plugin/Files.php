@@ -36,7 +36,9 @@ class Insight_Plugin_Files extends Insight_Plugin_API {
                     $exclude = true;
                 } else
                 // stop excluding after
-                if (preg_match("/\/Zend\/Reflection\/Class.php$/", $files[$i]) ||
+                if (preg_match("/\/Wildfire\/Protocol\/Component.php$/", $files[$i]) ||
+-                   preg_match("/\/Insight\/Encoder\/Default.php$/", $files[$i]) ||
+                    preg_match("/\/Zend\/Reflection\/Class.php$/", $files[$i]) ||
                     preg_match("/\/Zend\/Reflection\/Property.php$/", $files[$i]) ||
                     preg_match("/\/Zend\/Reflection\/Method.php$/", $files[$i]) ||
                     preg_match("/\/Zend\/Reflection\/Docblock.php$/", $files[$i]) ||
