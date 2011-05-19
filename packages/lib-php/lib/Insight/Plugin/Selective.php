@@ -1,69 +1,103 @@
 <?php
 
 require_once('Insight/Util.php');
-require_once('Insight/Plugin/API.php');
+require_once('Insight/Plugin/Console.php');
 
-class Insight_Plugin_Selective extends Insight_Plugin_API {
+class Insight_Plugin_Selective extends Insight_Plugin_Console {
+    
+    protected $defaultFilters = null;
 
     protected $filters = null;
+    
+    protected $usedFilters = null;
+    
+    protected $openStack = array();
 
 
-    protected function _loadFilters($skipAnnounce=false) {
+    protected function _loadFilters() {
         if($this->filters===null) {
             if ($this->request->isClientPresent()) {
-                $this->filters = $this->request->getFromCache('filters');
+                $this->defaultFilters = $this->request->getFromClientCache('filters');
+                $this->filters = $this->request->getFromClientUrlCache('filters');
             }
-            if(!$this->filters) {
-                $this->filters = array();
-            } else
-            if($skipAnnounce===false) {
-                Insight_Helper::to('selective')->announceFilters();
-            }
+            if(!$this->defaultFilters) $this->defaultFilters = array();
+            if(!$this->filters) $this->filters = array();
+            $this->usedFilters = array();
         }
     }
 
-    protected function _keyForName($name) {
-        if(isset($this->message->meta['target'])) {
-            return $this->message->meta['target'] . ':' . $name;
+    protected function _keyForName($name, $parents, $includeTarget = true) {
+        if($includeTarget && isset($this->message->meta['target'])) {
+            return $this->message->meta['target'] . ((sizeof($parents)>0)?("|".implode("|", $parents)):"") . '|' . $name;
         } else {
-            return $name;
+            return ((sizeof($parents)>0)?(implode("|", $parents)."|"):"") . $name;
         }
     }
 
-    protected function _getFilter($name) {
+    protected function _getFilter($name, $parents) {
         $this->_loadFilters();
-        $key = $this->_keyForName($name);
-        if(!isset($this->filters[$key])) {
-            $this->filters[$key] = array(
-                'name' => $name,
-                'enabled' => false
-            );
-            if(isset($this->message->meta['target'])) {
-                $this->filters[$key]['target'] = $this->message->meta['target'];
-            }
-            if ($this->request->isClientPresent()) {
-                $this->request->storeInCache('filters', $this->filters);
-                Insight_Helper::to('selective')->announceFilters();
-            }
+        $key = $this->_keyForName($name, $parents);
+
+        $enabled = false;
+        if(isset($this->filters[$key])) {
+            $enabled = $this->filters[$key]['enabled'];
+        } else
+        if(isset($this->defaultFilters[$key])) {
+            $enabled = $this->defaultFilters[$key]['enabled'];
         }
-        return $this->filters[$key];
+
+        $this->usedFilters[$key] = array(
+            'name' => $name,
+            'enabled' => $enabled
+        );
+        if(isset($this->message->meta['target'])) {
+            $this->usedFilters[$key]['target'] = $this->message->meta['target'];
+        }
+        return $this->usedFilters[$key];
     }
 
-    public function announceFilters() {
-        $this->_loadFilters(true);
-        $this->message->meta(array(
+    protected function onShutdown() {
+        if (!$this->usedFilters || !$this->request->isClientPresent())
+            return;
+        $this->request->storeInCache('filters', $this->usedFilters);
+        Insight_Helper::to('selective')->getMessage()->meta(array(
             "encoder" => "JSON"
-        ))->once(__FILE__.':announceFilters')->send(array(
-            "filters" => $this->filters
+        ))->send(array(
+            "filters" => $this->usedFilters
         ));
     }
 
     public function on($name) {
-        $filter = $this->_getFilter($name);
+        if (strpos($name, '|') !== false)
+            throw new Exception("on() labels may not contain the '|' (pipe) character");
+        $parents = isset($this->message->meta['.selective.parents'])?$this->message->meta['.selective.parents']:array();
+        if (sizeof($parents) === 0 && sizeof($this->openStack) > 0)
+            $parents = explode("|", $this->openStack[sizeof($this->openStack)-1]);
+        if (sizeof($parents)>0 && $parents[sizeof($parents)-1] == $name)
+            $parents = array_slice($parents, 0, -1);
+        $filter = $this->_getFilter($name, $parents);
         if($filter['enabled']) {
-            return $this->message;
+            array_push($parents, $name);
+            return $this->message->meta(array(
+                '.selective.parents' => $parents
+            ));
         } else {
             return Insight_Helper::getNullMessage();
+        }
+    }
+
+    public function open() {
+        $parents = isset($this->message->meta['.selective.parents'])?$this->message->meta['.selective.parents']:array();
+        $key = $this->_keyForName($parents[sizeof($parents)-1], array_slice($parents, 0, sizeof($parents)-1), false);
+        array_push($this->openStack, $key);
+    }
+
+    public function close() {
+        $parents = isset($this->message->meta['.selective.parents'])?$this->message->meta['.selective.parents']:array();
+        $key = $this->_keyForName($parents[sizeof($parents)-1], array_slice($parents, 0, sizeof($parents)-1), false);
+        $last = array_pop($this->openStack);
+        if ($last != $key) {
+            throw new Exception('on()->open/close() nesting is incorrect for open[' + $last + '] close[' + $key + ']');
         }
     }
 
@@ -71,15 +105,24 @@ class Insight_Plugin_Selective extends Insight_Plugin_API {
 
         if($request->getAction()=='ToggleFilter') {
 
-            $this->_loadFilters(true);
+            $this->_loadFilters();
 
             $key = $request->getArgument('key');
 
             if(isset($this->filters[$key])) {
-                $this->filters[$key]['enabled'] = !$this->filters[$key]['enabled'];
+                if ($request->hasArgument('enabled')) {
+                    $this->filters[$key]['enabled'] = $request->getArgument('enabled');
+                } else {
+                    $this->filters[$key]['enabled'] = !$this->filters[$key]['enabled'];
+                }
             }
+            if (!$this->defaultFilters) {
+                $this->defaultFilters[$key] = array();
+            }
+            $this->defaultFilters[$key]['enabled'] = $this->filters[$key]['enabled'];
 
-            $request->storeInCache('filters', $this->filters);
+            $request->storeInClientCache('filters', $this->defaultFilters);
+            $request->storeInClientUrlCache('filters', $this->filters);
 
             return array(
                 'type' => 'text/plain',

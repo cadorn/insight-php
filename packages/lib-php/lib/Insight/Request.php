@@ -67,6 +67,14 @@ class Insight_Request
         return $this->arguments;
     }
 
+    public function hasArgument($name)
+    {
+        if(!isset($this->arguments[$name])) {
+            return false;
+        }
+        return true;
+    }
+
     public function getArgument($name)
     {
         if(!isset($this->arguments[$name])) {

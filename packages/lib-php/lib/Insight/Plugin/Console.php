@@ -202,7 +202,7 @@ class Insight_Plugin_Console extends Insight_Plugin_API {
     }
 
     public function on($path) {
-        return $this->message->api('Insight_Plugin_Selective', true)->on($path);
+        return $this->message->api('Insight_Plugin_Selective')->on($path);
     }
 
     public function nolimit($nolimit=true) {
