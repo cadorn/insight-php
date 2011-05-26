@@ -18,7 +18,7 @@ class Insight_Plugin_Files extends Insight_Plugin_API {
         $files = get_included_files();
 
         // exclude our own files
-        $exclude = false;
+        $excluding = false;
         for ($i=0 ; $i<count($files) ; $i++) {
             
             // TODO: Make this more reliable
@@ -30,10 +30,11 @@ class Insight_Plugin_Files extends Insight_Plugin_API {
                 preg_match("/\/Zend\//", $files[$i]))
             {
                 // potentially exclude
+                $exclude = false;
 
                 // start excluding when
                 if (preg_match("/\/FirePHP\/Init.php$/", $files[$i])) {
-                    $exclude = true;
+                    $excluding = true;
                 } else
                 // stop excluding after
                 if (preg_match("/\/Wildfire\/Protocol\/Component.php$/", $files[$i]) ||
@@ -46,11 +47,18 @@ class Insight_Plugin_Files extends Insight_Plugin_API {
                     preg_match("/\/Zend\/Loader.php$/", $files[$i]) ||
                     preg_match("/\/Zend\/Reflection\/Parameter.php$/", $files[$i]))
                 {
-                    $exclude = false;
-                    array_splice($files, $i, 1);
-                    $i--;
+                    $excluding = false;
+                    $exclude = true;
+                } else
+                // always exclude
+                if (preg_match("/\/FirePHP\//", $files[$i]) ||
+                    preg_match("/\/FirePHPCore\//", $files[$i]) ||
+                    preg_match("/\/Insight\//", $files[$i]) ||
+                    preg_match("/\/Wildfire\//", $files[$i]))
+                {
+                    $exclude = true;
                 }
-                if ($exclude)
+                if ($excluding || $exclude)
                 {
                     array_splice($files, $i, 1);
                     $i--;
