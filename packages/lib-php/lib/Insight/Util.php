@@ -94,7 +94,10 @@ class Insight_Util {
      */
     public static function is_utf8($str) {
         if(function_exists('mb_detect_encoding')) {
-            return (mb_detect_encoding($str, 'UTF-8', true) == 'UTF-8');
+            return (
+                mb_detect_encoding($str, 'UTF-8', true) == 'UTF-8' &&
+                ($str === null || self::json_encode($str) !== 'null')
+            );
         }
         $c=0; $b=0;
         $bits=0;
@@ -118,7 +121,7 @@ class Insight_Util {
                 }
             }
         }
-        return true;
+        return ($str === null || self::json_encode($str) !== 'null');
     }
 
     public static function getallheaders() {
