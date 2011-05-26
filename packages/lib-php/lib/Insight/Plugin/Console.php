@@ -245,7 +245,8 @@ class Insight_Plugin_Console extends Insight_Plugin_API {
     }
     
     public function show() {
-        // TODO: Select correct console in UI
-        FirePHP::to('controller')->triggerInspect();
+        FirePHP::to('controller')->triggerInspect(array(
+            'target' => $this->message->meta['target']
+        ));
     }
 }
