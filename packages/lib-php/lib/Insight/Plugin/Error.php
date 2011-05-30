@@ -23,22 +23,22 @@ class Insight_Plugin_Error extends Insight_Plugin_API {
 
     protected $errorHistory = array();
 
-    protected static $ERROR_CONSTANTS = array('E_ERROR',
-                                              'E_WARNING',
-                                              'E_PARSE',
-                                              'E_NOTICE',
-                                              'E_CORE_ERROR',
-                                              'E_CORE_WARNING',
-                                              'E_COMPILE_ERROR',
-                                              'E_COMPILE_WARNING',
-                                              'E_USER_ERROR',
-                                              'E_USER_WARNING',
-                                              'E_USER_NOTICE',
-                                              'E_STRICT',
-                                              'E_RECOVERABLE_ERROR',
-                                              'E_DEPRECATED',
-                                              'E_USER_DEPRECATED',
-                                              'E_ALL');
+    protected static $ERROR_CONSTANTS = array('E_ERROR' => E_ERROR,
+                                              'E_WARNING' => E_WARNING,
+                                              'E_PARSE' => E_PARSE,
+                                              'E_NOTICE' => E_NOTICE,
+                                              'E_CORE_ERROR' => E_CORE_ERROR,
+                                              'E_CORE_WARNING' => E_CORE_WARNING,
+                                              'E_COMPILE_ERROR' => E_COMPILE_ERROR,
+                                              'E_COMPILE_WARNING' => E_COMPILE_WARNING,
+                                              'E_USER_ERROR' => E_USER_ERROR,
+                                              'E_USER_WARNING' => E_USER_WARNING,
+                                              'E_USER_NOTICE' => E_USER_NOTICE,
+                                              'E_STRICT' => E_STRICT,
+                                              'E_RECOVERABLE_ERROR' => E_RECOVERABLE_ERROR,
+                                              'E_DEPRECATED' => E_DEPRECATED,
+                                              'E_USER_DEPRECATED' => E_USER_DEPRECATED,
+                                              'E_ALL' => E_ALL);
 
     /**
      * Capture all errors and send to provided console
@@ -67,6 +67,32 @@ class Insight_Plugin_Error extends Insight_Plugin_API {
             return;
         }
 
+        if($this->errorHistory[$errno . ':' . $errstr . ':' . $errfile . ':' . $errline]) {
+            // a repeated error
+            return;
+        }
+
+        $conditionalErrorConsole = $this->errorConsole->on('FirePHP: Show all PHP Errors (except:)');
+
+        static $_errorReportingInfo = null;
+        if ($_errorReportingInfo === null) {
+            $_errorReportingInfo = self::parseErrorReportingBitmask(error_reporting(), $errno);
+
+            foreach (self::$ERROR_CONSTANTS as $constant => $bit) {
+                if ($constant == 'E_ALL') continue;
+                $conditionalErrorConsole->on($constant);
+            }
+        }
+
+        if (in_array($errno, $_errorReportingInfo['absentBits'])) {
+            if (!$conditionalErrorConsole->is(true)) {
+                return;
+            }
+            if ($conditionalErrorConsole->on($_errorReportingInfo['bitToStr'][$errno])->is(true)) {
+                return;
+            }
+        }
+
         // log error if applicable
         if(ini_get('log_errors') && ini_get('error_log')) {
             $file = ini_get('error_log');
@@ -86,10 +112,6 @@ class Insight_Plugin_Error extends Insight_Plugin_API {
             }
         }
 
-        if($this->errorHistory[$errno . ':' . $errstr . ':' . $errfile . ':' . $errline]) {
-            // a repeated error
-            return;
-        }
         $this->errorHistory[$errno . ':' . $errstr . ':' . $errfile . ':' . $errline] = true;
 
         // ignore assertion errors
@@ -215,12 +237,15 @@ class Insight_Plugin_Error extends Insight_Plugin_API {
             'present' => array(),
             'absent' => array()
         );
-        foreach( self::$ERROR_CONSTANTS as $constant ) {
+        foreach( self::$ERROR_CONSTANTS as $constant => $bit ) {
             if( ($bitmask & constant($constant)) > 0 ) {
                 $info['present'][] = $constant;
+                $info['presentBits'][] = $bit;
             } else {
                 $info['absent'][] = $constant;
+                $info['absentBits'][] = $bit;
             }
+            $info['bitToStr'][$bit] = $constant;
         }
         return $info;
     }

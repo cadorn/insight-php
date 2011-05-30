@@ -59,6 +59,14 @@ class Insight_Config
                             "api" => "Insight/Plugin/Process"
                         )
                     ),
+                    'plugins' => array(
+                        'assertion' => array(
+                            'api' => 'Insight/Plugin/Assertion'
+                        ),
+                        'error' => array(
+                            'api' => 'Insight/Plugin/Error'
+                        ),
+                    ),
                     "renderers" => array(
                         "insight" => array(
                             "uid" => "http://registry.pinf.org/cadorn.org/renderers/packages/insight/0"

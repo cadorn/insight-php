@@ -154,15 +154,15 @@ class Insight_Helper
 
                 // init some plugins so their shutdown callback will be called
                 self::to('request')->files();
-                
+
                 // setup error and assertion tracking
-                self::to('request')->getMessage()->api('Insight_Plugin_Assertion')->onAssertionError(
+                self::plugin('assertion')->onAssertionError(
                     FirePHP::to('page')->console('Assertions')
                 );
-                self::to('request')->getMessage()->api('Insight_Plugin_Error')->onError(
+                self::plugin('error')->onError(
                     FirePHP::to('page')->console('Errors')
                 );
-                self::to('request')->getMessage()->api('Insight_Plugin_Error')->onException(
+                self::plugin('error')->onException(
                     FirePHP::to('page')->console('Errors')
                 );
 
