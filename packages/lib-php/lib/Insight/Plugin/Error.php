@@ -79,8 +79,21 @@ class Insight_Plugin_Error extends Insight_Plugin_API {
             $_errorReportingInfo = self::parseErrorReportingBitmask(error_reporting(), $errno);
 
             foreach (self::$ERROR_CONSTANTS as $constant => $bit) {
-                if ($constant == 'E_ALL') continue;
-                $conditionalErrorConsole->on($constant);
+                switch($constant) {
+                    case 'E_ERROR':
+                    case 'E_PARSE':
+                    case 'E_CORE_ERROR':
+                    case 'E_CORE_WARNING':
+                    case 'E_COMPILE_ERROR':
+                    case 'E_COMPILE_WARNING':
+                    case 'E_STRICT':
+                    case 'E_ALL':
+                    	// ignore for now
+                    	break;
+                    default:
+                        $conditionalErrorConsole->on($constant);
+                        break;
+                }
             }
         }
 
@@ -142,7 +155,7 @@ class Insight_Plugin_Error extends Insight_Plugin_API {
                 $meta['encoder.exception.traceMaxLength'] = 2;
             }
 
-            $this->errorConsole->meta($meta)->error(new ErrorException($errstr, 0, $errno, $errfile, $errline));
+            $this->errorConsole->meta($meta)->error(new ErrorException($_errorReportingInfo['bitToStr'][$errno] . ' - ' . $errstr, 0, $errno, $errfile, $errline));
         }
     }
    
