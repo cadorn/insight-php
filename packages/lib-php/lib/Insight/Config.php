@@ -441,11 +441,10 @@ class Insight_Config
     }
     
     public function getEncoderOptions() {
-        if(!isset($this->config['implements'][self::CONFIG_META_URI]['options']) ||
-           !isset($this->config['implements'][self::CONFIG_META_URI]['options']['encoder'])) {
+        if(!isset($this->config['implements'][self::CONFIG_META_URI]['encoder'])) {
             return array();
         }
-        return $this->config['implements'][self::CONFIG_META_URI]['options']['encoder'];
+        return $this->config['implements'][self::CONFIG_META_URI]['encoder'];
     }
 
     public function getCachePath($basePathOnly=false) {
