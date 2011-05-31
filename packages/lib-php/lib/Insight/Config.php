@@ -224,12 +224,18 @@ class Insight_Config
         if(isset($config['implements'][self::CONFIG_META_URI]['paths'])) {
             $paths = array();
             foreach( $config['implements'][self::CONFIG_META_URI]['paths'] as $path => $instruction ) {
+                $key = false;
                 if(substr($path, 0, 2)=="./") {
                     if($this->file) {
-                        $paths[realpath( dirname($this->file) . DIRECTORY_SEPARATOR . substr($path,2) )] = $instruction;
+                        $key = realpath( dirname($this->file) . DIRECTORY_SEPARATOR . substr($path,2) );
                     }
                 } else {
-                    $paths[realpath($path)] = $instruction;
+                    $key = realpath($path);
+                }
+                if (!$key) {
+                    // TODO: Optionally log warning?
+                } else {
+                    $paths[$key] = $instruction;
                 }
             }
             // sort alphabetically from longest to shortest
