@@ -10,8 +10,6 @@ if(!defined('E_USER_DEPRECATED ')) {
     define('E_USER_DEPRECATED ', 16384);
 }
 
-require_once('Insight/Plugin/API.php');
-
 class Insight_Plugin_Error extends Insight_Plugin_API {
 
     protected $traceOffset = 6;

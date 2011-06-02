@@ -1,7 +1,5 @@
 <?php
 
-require_once('Insight/Plugin/Console.php');
-
 class Insight_Plugin_Group extends Insight_Plugin_Console {
     
     protected static $loggedTitles = array();

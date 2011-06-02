@@ -1,8 +1,5 @@
 <?php
 
-require_once('Insight/Util.php');
-require_once('Insight/Plugin/Console.php');
-
 class Insight_Plugin_Selective extends Insight_Plugin_Console {
     
     protected $defaultFilters = null;

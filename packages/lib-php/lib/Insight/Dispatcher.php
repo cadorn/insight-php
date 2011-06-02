@@ -1,8 +1,5 @@
 <?php
 
-require_once('Insight/Util.php');
-require_once('Wildfire/Channel/FlushListener.php');
-
 class Insight_Dispatcher implements Wildfire_Channel_FlushListener
 {
     const PROTOCOL_ID = 'http://registry.pinf.org/cadorn.org/wildfire/@meta/protocol/component/0.1.0';
@@ -44,7 +41,6 @@ class Insight_Dispatcher implements Wildfire_Channel_FlushListener
     public function setChannel($channel)
     {
         if(is_string($channel)) {
-            require_once 'Wildfire/Channel/' . $channel . '.php';
             $class = 'Wildfire_Channel_' . $channel;
             $channel = new $class();
         }
@@ -89,7 +85,6 @@ class Insight_Dispatcher implements Wildfire_Channel_FlushListener
     private function getNewMessage($meta)
     {
         if(!$this->messageFactory) {
-            require_once 'Wildfire/Message.php';
             return new Wildfire_Message();
         }
         return $this->messageFactory->newMessage($meta);
@@ -98,7 +93,6 @@ class Insight_Dispatcher implements Wildfire_Channel_FlushListener
     public function getEncoder($name = 'Default')
     {
         if(!isset($this->encoders[$name])) {
-            require_once 'Insight/Encoder/' . $name . '.php';
             $class = 'Insight_Encoder_' . $name;
             $this->encoders[$name] = $encoder = new $class();
             $encoder->setOptions($this->helper->getConfig()->getEncoderOptions());

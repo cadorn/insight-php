@@ -1,7 +1,5 @@
 <?php
 
-require_once('Insight/Plugin/API.php');
-
 class Insight_Plugin_Timeline extends Insight_Plugin_API {
 
 /*

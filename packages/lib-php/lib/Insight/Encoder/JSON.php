@@ -1,7 +1,5 @@
 <?php
 
-require_once('Insight/Util.php');
-
 class Insight_Encoder_JSON {
 
     const UNDEFINED = '_U_N_D_E_F_I_N_E_D_';

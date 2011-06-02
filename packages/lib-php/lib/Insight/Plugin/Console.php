@@ -4,9 +4,6 @@ if(!defined('E_USER_DEPRECATED ')) {
     define('E_USER_DEPRECATED ', 16384);
 }
 
-require_once('Insight/Util.php');
-require_once('Insight/Plugin/API.php');
-
 class Insight_Plugin_Console extends Insight_Plugin_API {
     
     protected static $groupIndex = 0;

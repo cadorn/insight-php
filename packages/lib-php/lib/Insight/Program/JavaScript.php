@@ -1,8 +1,5 @@
 <?php
 
-require_once('Insight/Util.php');
-require_once('Insight/Program/JavaScript/Plugin.php');
-
 abstract class Insight_Program_JavaScript {
 
     protected $alias = null;

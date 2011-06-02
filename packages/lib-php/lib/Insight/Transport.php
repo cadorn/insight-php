@@ -1,8 +1,5 @@
 <?php
 
-require_once('Insight/Util.php');
-require_once('Wildfire/Transport.php');
-
 class Insight_Transport extends Wildfire_Transport {
 
     const TTL = 600;  // 10 minutes

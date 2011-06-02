@@ -1,7 +1,5 @@
 <?php
 
-require_once('Insight/Util.php');
-
 class Insight_Config
 {
     const PACKAGE_META_URI = 'http://registry.pinf.org/cadorn.org/insight/@meta/package/0';

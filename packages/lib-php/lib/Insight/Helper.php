@@ -1,9 +1,5 @@
 <?php
 
-require_once('Insight/Util.php');
-require_once('Insight/Config.php');
-require_once('Insight/Message.php');
-
 class Insight_Helper
 {
     private static $instance = null;
@@ -27,7 +23,31 @@ class Insight_Helper
     private $plugins = array();
     
     private static $swallowDebugMessages = false;
-    
+
+    public static function autoload($class)
+    {
+        if (strpos($class, 'Insight') !== 0 &&
+            strpos($class, 'Zend') !== 0 &&
+            strpos($class, 'Wildfire') !== 0
+        ) {
+            return;
+        }
+
+        // find relative
+        if (file_exists($file = dirname(dirname(__FILE__)) . '/' . str_replace('_', '/', $class) . '.php')) {
+            require_once($file);
+        } else
+        // find in include path
+        {
+            foreach (explode(PATH_SEPARATOR, get_include_path()) as $basePath) {
+                if (file_exists($file = $basePath . '/' . str_replace('_', '/', $class) . '.php')) {
+                    require_once($file);
+                    return;
+                }
+            }
+        }
+    }
+
     public static function isInitialized() {
         return !!(self::$instance);
     }
@@ -71,7 +91,6 @@ class Insight_Helper
                 // set a dummy channel if not authorized
                 // this will prevent all data from being sent while keeping all channel logic and listeners working
                 if(self::$instance->authorized!==true) {
-                    require_once('Wildfire/Channel/Memory.php');
                     self::$instance->channel = new Wildfire_Channel_Memory();
                 }
 
@@ -108,14 +127,12 @@ class Insight_Helper
                 // NOTE: If running as CLI we don't need to keep data in file
                 $transport = false;
                 if(php_sapi_name()!='cli') {
-                    require_once('Insight/Transport.php');
                     $transport = new Insight_Transport();
                     $transport->setConfig($config);
                     self::$instance->getChannel()->setTransport($transport);
                 }
 
                 // initialize server
-                require_once('Insight/Server.php');
                 self::$instance->server = new Insight_Server();
                 self::$instance->server->setHelper(self::$instance);
                 self::$instance->server->setConfig($config);
@@ -225,10 +242,8 @@ class Insight_Helper
     public function getChannel() {
         if(!$this->channel) {
             if(php_sapi_name()=='cli') {
-                require_once('Wildfire/Channel/HttpClient.php');
                 $this->channel = new Wildfire_Channel_HttpClient('localhost', 8099);
             } else {
-                require_once('Wildfire/Channel/HttpHeader.php');
                 $this->channel = new Wildfire_Channel_HttpHeader();
             }
         }
@@ -280,7 +295,6 @@ class Insight_Helper
             throw new Exception("Insight is not enabled!");
         }
         if(!$this->dispatcher) {
-            require_once('Insight/Dispatcher.php');
             $this->dispatcher = new Insight_Dispatcher();
             $this->dispatcher->setHelper($this);
             $this->dispatcher->setSenderID($this->config->getPackageId() . ((self::$senderLibrary)?'?lib='.self::$senderLibrary:''));
@@ -291,7 +305,6 @@ class Insight_Helper
 
     private function getAnnounceReceiver() {
         if(!$this->announceReceiver) {
-            require_once('Insight/Receiver/Announce.php');
             $this->announceReceiver = new Insight_Receiver_Announce();
             $this->announceReceiver->setChannel($this->getChannel());
             // parse received headers
@@ -320,13 +333,11 @@ class Insight_Helper
             }
         }
 
-        require_once('Insight/Message.php');
         $message = new Insight_Message();
         $message->setHelper($instance);
 
         $message = $message->to($name);
 
-        require_once($info['api'] . ".php");
         $class = str_replace("/", "_", $info['api']);
 
         $api = $instance->getApi($class);
@@ -344,9 +355,6 @@ class Insight_Helper
 
     public function getApi($class) {
         if(!isset($this->apis[$class])) {
-            if (!class_exists($class)) {
-                require_once(str_replace('_', '/', $class) . '.php');
-            }
             $api = $this->apis[$class] = new $class();
             if(method_exists($api, 'setRequest')) {
                 $api->setRequest($this->request);
@@ -367,7 +375,6 @@ class Insight_Helper
 
             $info = $instance->config->getPluginInfo($name);
 
-            require_once($info['api'] . ".php");
             $class = str_replace("/", "_", $info['api']);
 
             $plugin = new $class();
@@ -566,6 +573,9 @@ function Insight_Helper__shutdown() {
 
 // auto-initialize based on environment if applicable
 function Insight_Helper__main() {
+
+    spl_autoload_register('Insight_Helper::autoload');
+
     $additionalConfig = isset($GLOBALS['INSIGHT_ADDITIONAL_CONFIG'])?$GLOBALS['INSIGHT_ADDITIONAL_CONFIG']:false;
     $insightConfigPath = getenv('INSIGHT_CONFIG_PATH');
     if(defined('INSIGHT_CONFIG_PATH')) {

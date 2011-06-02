@@ -1,8 +1,5 @@
 <?php
 
-require_once('Insight/Plugin/API.php');
-require_once('Insight/Plugin/Plugin/Message.php');
-
 class Insight_Plugin_Plugin extends Insight_Plugin_API {
 
     private $plugins = array();

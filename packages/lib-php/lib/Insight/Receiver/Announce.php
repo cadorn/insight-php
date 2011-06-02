@@ -1,9 +1,5 @@
 <?php
 
-require_once('Insight/Util.php');
-require_once('Wildfire/Receiver.php');
-
-
 class Insight_Receiver_Announce extends Wildfire_Receiver
 {
     private $data = array();

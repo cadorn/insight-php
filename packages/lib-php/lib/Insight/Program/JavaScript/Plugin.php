@@ -1,7 +1,5 @@
 <?php
 
-require_once('Insight/Util.php');
-
 class Insight_Program_JavaScript_Plugin {
 
     private $owner = null;

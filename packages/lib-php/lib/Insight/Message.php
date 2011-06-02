@@ -1,8 +1,5 @@
 <?php
 
-require_once('Insight/Util.php');
-
-
 class Insight_Message {
     
     /**
