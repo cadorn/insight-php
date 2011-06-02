@@ -338,9 +338,8 @@ class Insight_Helper
 
         $message = $message->to($name);
 
-        $class = str_replace("/", "_", $info['api']);
+        $api = $instance->getApi($info['api']);
 
-        $api = $instance->getApi($class);
         $message = $message->api($api);
         if(method_exists($api, 'getDefaultMeta')) {
             $message = $message->meta($api->getDefaultMeta());
@@ -348,12 +347,15 @@ class Insight_Helper
 
         return $message;
     }
-    
+
     public function getApis() {
         return $this->apis;
     }
 
     public function getApi($class) {
+
+        $class = str_replace("/", "_", $class);
+
         if(!isset($this->apis[$class])) {
             $api = $this->apis[$class] = new $class();
             if(method_exists($api, 'setRequest')) {
@@ -375,14 +377,7 @@ class Insight_Helper
 
             $info = $instance->config->getPluginInfo($name);
 
-            $class = str_replace("/", "_", $info['api']);
-
-            $plugin = new $class();
-            if(method_exists($plugin, 'setRequest')) {
-                $plugin->setRequest($instance->request);
-            }
-
-            $instance->plugins[$name] = $plugin;
+            $instance->plugins[$name] = $instance->getApi($info['api']);
         }
 
         return $instance->plugins[$name];
