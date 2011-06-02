@@ -165,7 +165,12 @@ class Insight_Request
                 throw new Exception('Error creating cache path at: ' . $file);
             }
         }
-        return $file . DIRECTORY_SEPARATOR . $name . '.json';        
+        $nameParts = explode('/', $name);
+        if (strpos(array_pop($nameParts), '.') > 1) {
+            return $file . DIRECTORY_SEPARATOR . $name;
+        } else {
+            return $file . DIRECTORY_SEPARATOR . $name . '.json';        
+        }
     }
     
 }

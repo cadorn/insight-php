@@ -344,7 +344,9 @@ class Insight_Helper
 
     public function getApi($class) {
         if(!isset($this->apis[$class])) {
-            require_once(str_replace('_', '/', $class) . '.php');
+            if (!class_exists($class)) {
+                require_once(str_replace('_', '/', $class) . '.php');
+            }
             $api = $this->apis[$class] = new $class();
             if(method_exists($api, 'setRequest')) {
                 $api->setRequest($this->request);
@@ -360,15 +362,20 @@ class Insight_Helper
         if(!$instance->getEnabled()) {
             return Insight_Helper::getNullMessage();
         }
-        
+
         if(!isset($instance->plugins[$name])) {
 
             $info = $instance->config->getPluginInfo($name);
-    
+
             require_once($info['api'] . ".php");
             $class = str_replace("/", "_", $info['api']);
-    
-            $instance->plugins[$name] = new $class();
+
+            $plugin = new $class();
+            if(method_exists($plugin, 'setRequest')) {
+                $plugin->setRequest($instance->request);
+            }
+
+            $instance->plugins[$name] = $plugin;
         }
 
         return $instance->plugins[$name];

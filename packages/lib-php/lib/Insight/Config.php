@@ -66,6 +66,9 @@ class Insight_Config
                         'error' => array(
                             'api' => 'Insight/Plugin/Error'
                         ),
+                        'patch' => array(
+                            'api' => 'Insight/Plugin/Patch'
+                        )
                     ),
                     "renderers" => array(
                         "insight" => array(
