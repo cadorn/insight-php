@@ -702,25 +702,30 @@ class Insight_Encoder_Default {
         
         // TODO: Go up to parent classes (let subclasses override tags from parent classes)
         
-        $reflectionClass = new Zend_Reflection_Class($class);
-        
-        foreach( $reflectionClass->getProperties() as $property ) {
+        try {
+            $reflectionClass = new Zend_Reflection_Class($class);
             
-            $docblock = $property->getDocComment();
-            if($docblock) {
+            foreach( $reflectionClass->getProperties() as $property ) {
                 
-                $tags = $docblock->getTags('insight');
-                if($tags) {
-                    foreach($tags as $tag) {
-                       
-                       list($name, $value) = $this->_parseAnnotationTag($tag);
-                       
-                       $annotations['$'.$property->getName()][$name] = $value;
+                $docblock = $property->getDocComment();
+                if($docblock) {
+                    
+                    $tags = $docblock->getTags('insight');
+                    if($tags) {
+                        foreach($tags as $tag) {
+                           
+                           list($name, $value) = $this->_parseAnnotationTag($tag);
+                           
+                           $annotations['$'.$property->getName()][$name] = $value;
+                        }
                     }
                 }
             }
+        } catch(Exception $e) {
+            // silence errors (Zend_Reflection_Docblock_Tag throws if '@name(..)' tag found)
+            // TODO: Optionally show these errors
         }
-        
+
         return $annotations;
     }
     
