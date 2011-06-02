@@ -40,6 +40,9 @@ class Insight_Plugin_Error extends Insight_Plugin_API {
                                               'E_USER_DEPRECATED' => E_USER_DEPRECATED,
                                               'E_ALL' => E_ALL);
 
+    protected $_errorReportingInfo = null;
+    protected $_conditionalErrorConsole = null;
+
     /**
      * Capture all errors and send to provided console
      * 
@@ -49,6 +52,30 @@ class Insight_Plugin_Error extends Insight_Plugin_API {
 
         $this->errorConsole = $console;
         $this->errorTypes = $types;
+
+        $this->_conditionalErrorConsole = $this->errorConsole->on('FirePHP: Show all PHP Errors (except:)');
+
+        if ($this->_errorReportingInfo === null) {
+            $this->_errorReportingInfo = self::parseErrorReportingBitmask(error_reporting());
+
+            foreach (self::$ERROR_CONSTANTS as $constant => $bit) {
+                switch($constant) {
+                    case 'E_ERROR':
+                    case 'E_PARSE':
+                    case 'E_CORE_ERROR':
+                    case 'E_CORE_WARNING':
+                    case 'E_COMPILE_ERROR':
+                    case 'E_COMPILE_WARNING':
+                    case 'E_STRICT':
+                    case 'E_ALL':
+                        // ignore for now
+                        break;
+                    default:
+                        $this->_conditionalErrorConsole->on($constant);
+                        break;
+                }
+            }
+        }
 
         //NOTE: The following errors will not be caught by this error handler:
         //      E_ERROR, E_PARSE, E_CORE_ERROR,
@@ -72,38 +99,14 @@ class Insight_Plugin_Error extends Insight_Plugin_API {
             return;
         }
 
-        $conditionalErrorConsole = $this->errorConsole->on('FirePHP: Show all PHP Errors (except:)');
-
-        static $_errorReportingInfo = null;
-        if ($_errorReportingInfo === null) {
-            $_errorReportingInfo = self::parseErrorReportingBitmask(error_reporting(), $errno);
-
-            foreach (self::$ERROR_CONSTANTS as $constant => $bit) {
-                switch($constant) {
-                    case 'E_ERROR':
-                    case 'E_PARSE':
-                    case 'E_CORE_ERROR':
-                    case 'E_CORE_WARNING':
-                    case 'E_COMPILE_ERROR':
-                    case 'E_COMPILE_WARNING':
-                    case 'E_STRICT':
-                    case 'E_ALL':
-                    	// ignore for now
-                    	break;
-                    default:
-                        $conditionalErrorConsole->on($constant);
-                        break;
-                }
-            }
+        // we ignore the error if we should based on error_reporting() and the client is not forcing all errors to show
+        if (in_array($errno, $this->_errorReportingInfo['absentBits']) && !$this->_conditionalErrorConsole->is(true)) {
+            return;
         }
 
-        if (in_array($errno, $_errorReportingInfo['absentBits'])) {
-            if (!$conditionalErrorConsole->is(true)) {
-                return;
-            }
-            if ($conditionalErrorConsole->on($_errorReportingInfo['bitToStr'][$errno])->is(true)) {
-                return;
-            }
+        // if the client is forcing all error to show see if this error is excluded
+        if ($this->_conditionalErrorConsole->is(true) && $this->_conditionalErrorConsole->on($this->_errorReportingInfo['bitToStr'][$errno])->is(true)) {
+            return;
         }
 
         // log error if applicable
@@ -155,7 +158,7 @@ class Insight_Plugin_Error extends Insight_Plugin_API {
                 $meta['encoder.exception.traceMaxLength'] = 2;
             }
 
-            $this->errorConsole->meta($meta)->error(new ErrorException($_errorReportingInfo['bitToStr'][$errno] . ' - ' . $errstr, 0, $errno, $errfile, $errline));
+            $this->errorConsole->meta($meta)->error(new ErrorException($this->_errorReportingInfo['bitToStr'][$errno] . ' - ' . $errstr, 0, $errno, $errfile, $errline));
         }
     }
    
